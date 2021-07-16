@@ -1,9 +1,14 @@
-use openid::request::create_request;
+#[macro_use]
+extern crate rocket;
 
-#[tokio::main]
-async fn main() -> Result<(), reqwest::Error> {
-    let res = reqwest::get("http://google.de").await?.text().await?;
-    println!("{:?}", res);
-    println!("{}", create_request());
-    Ok(())
+use openid::api::*;
+use openid::request::Request;
+
+//#[tokio::main]
+#[launch]
+fn app() -> _ {
+    //let res = reqwest::get("http://google.de").await?.text().await?;
+    //println!("{:?}", res);
+
+    rocket::build().mount("/", routes![start_demo, handle_success])
 }
