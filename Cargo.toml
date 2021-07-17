@@ -6,7 +6,6 @@ default-run = "oidclient"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-
 [[bin]]
 name = "oidclient"
 path = "./src/main.rs"
@@ -17,3 +16,5 @@ reqwest = "0.11.4"
 url = "2.2.2"
 rand = { version = "0.8.4", features = ["std", "std_rng"] }
 rocket = "0.5.0-rc.1"
+# My derive macro
+to-url = {path = "../to-url"}

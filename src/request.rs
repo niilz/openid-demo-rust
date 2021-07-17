@@ -1,4 +1,5 @@
 use rand::{thread_rng, Rng};
+use to_url::ToUrl;
 
 const REDIRECT_URI: &'static str = "http://localhost:3000/success";
 
@@ -61,4 +62,24 @@ pub fn generate_sec_token<'a>(special_number: u8) -> String {
         "security_token_1234567890SauerkrautSafthttpsKeepItSafe_{}",
         special_number
     )
+}
+
+#[derive(Debug, ToUrl)]
+struct MyS {
+    pups: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use to_url::ToUrl;
+
+    #[test]
+    fn can_use_macro() {
+        let myS = MyS {
+            pups: "kack".to_string(),
+        };
+        println!("running the test");
+        myS.demo();
+    }
 }
