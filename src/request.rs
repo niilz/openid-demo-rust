@@ -3,7 +3,7 @@ use to_url::ToUrl;
 
 const REDIRECT_URI: &'static str = "http://localhost:3000/success";
 
-#[derive(Debug)]
+#[derive(Debug, ToUrl)]
 pub struct Request<'a> {
     response_type: &'a str,
     client_id: &'a str,
@@ -41,10 +41,6 @@ impl<'a> Request<'a> {
         .collect::<Vec<_>>()
         .join("&")
     }
-
-    pub fn to_url(&self, target: String) -> String {
-        format!("{}?{}", target, self.to_query())
-    }
 }
 
 pub fn generate_nonce<'a>() -> String {
@@ -64,22 +60,22 @@ pub fn generate_sec_token<'a>(special_number: u8) -> String {
     )
 }
 
-#[derive(Debug, ToUrl)]
-struct MyS {
-    pups: String,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use to_url::ToUrl;
 
     #[test]
     fn can_use_macro() {
-        let myS = MyS {
-            pups: "kack".to_string(),
+        let dummy_req = Request {
+            response_type: "code",
+            client_id: "1234andSomeText", // e.g 424911365001.apps.googleusercontent.com&
+            scope: vec!["openid", "email", "profile"],
+            redirect_uri: REDIRECT_URI,
+            state: "0815StillTheSame".to_string(), // generate_sec_token(42),
+            // login_hint: daredevdiary@gmail.com,
+            nonce: "80085-3531".to_string(), // generate_nonce(),
         };
         println!("running the test");
-        myS.demo();
+        dummy_req.to_url("https://".to_string());
     }
 }
