@@ -65,7 +65,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_use_macro() {
+    fn to_url_creates_correct_url_for_request() {
         let dummy_req = Request {
             response_type: "code",
             client_id: "1234andSomeText", // e.g 424911365001.apps.googleusercontent.com&
