@@ -77,13 +77,13 @@ mod tests {
         };
         assert_eq!(
             dummy_req.to_url("https://my-dummy-op".to_string()),
-            r#"https://my-dummy-op?
-response_type=code&
-client_id=1234andSomeText&
-scope=openid%20email%20%profile&
-redirect_uir=http://dummy-redirect.com&
-state=security_token0815&
-nonce=80085-3531"#
+            "https://my-dummy-op?\
+                response_type=code&\
+                client_id=1234andSomeText&\
+                scope=openid%20email%20%profile&\
+                redirect_uir=http://dummy-redirect.com&\
+                state=security_token0815&\
+                nonce=80085-3531"
                 .to_string()
         );
     }
