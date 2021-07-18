@@ -70,12 +70,21 @@ mod tests {
             response_type: "code",
             client_id: "1234andSomeText", // e.g 424911365001.apps.googleusercontent.com&
             scope: vec!["openid", "email", "profile"],
-            redirect_uri: REDIRECT_URI,
-            state: "0815StillTheSame".to_string(), // generate_sec_token(42),
+            redirect_uri: "http://dummy-redirect.com",
+            state: "security_token0815".to_string(), // generate_sec_token(42),
             // login_hint: daredevdiary@gmail.com,
             nonce: "80085-3531".to_string(), // generate_nonce(),
         };
-        println!("running the test");
-        dummy_req.to_url("https://".to_string());
+        assert_eq!(
+            dummy_req.to_url("https://my-dummy-op".to_string()),
+            r#"https://my-dummy-op?
+response_type=code&
+client_id=1234andSomeText&
+scope=openid%20email%20%profile&
+redirect_uir=http://dummy-redirect.com&
+state=security_token0815&
+nonce=80085-3531"#
+                .to_string()
+        );
     }
 }
