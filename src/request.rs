@@ -26,21 +26,6 @@ impl<'a> Request<'a> {
             nonce: generate_nonce(),
         }
     }
-
-    pub fn to_query(&self) -> String {
-        vec![
-            self.response_type,
-            self.client_id,
-            self.scope.join("%20").as_str(),
-            self.redirect_uri,
-            &self.state,
-            &self.nonce,
-        ]
-        .iter()
-        .map(|part| part.to_string())
-        .collect::<Vec<_>>()
-        .join("&")
-    }
 }
 
 pub fn generate_nonce<'a>() -> String {
