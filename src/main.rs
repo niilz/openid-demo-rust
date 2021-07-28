@@ -2,7 +2,6 @@
 extern crate rocket;
 
 use openid::api::*;
-use openid::request::Request;
 
 //#[tokio::main]
 #[launch]

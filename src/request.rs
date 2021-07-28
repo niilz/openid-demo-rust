@@ -1,7 +1,7 @@
 use rand::{thread_rng, Rng};
 use to_url::ToUrl;
 
-const REDIRECT_URI: &'static str = "http://localhost:3000/success";
+const REDIRECT_URI: &'static str = "http%3A//localhost:8000/success";
 
 #[derive(Debug, ToUrl)]
 pub struct Request<'a> {
@@ -40,7 +40,7 @@ pub fn generate_nonce<'a>() -> String {
 pub fn generate_sec_token<'a>(special_number: u8) -> String {
     // Totally unsecure, hard coded string
     format!(
-        "security_token_1234567890SauerkrautSafthttpsKeepItSafe_{}",
+        "security-token-1234567890SauerkrautSafthttpsKeepItSafe-{}",
         special_number
     )
 }
