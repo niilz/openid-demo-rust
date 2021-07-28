@@ -9,5 +9,7 @@ fn app() -> _ {
     //let res = reqwest::get("http://google.de").await?.text().await?;
     //println!("{:?}", res);
 
-    rocket::build().mount("/", routes![start_demo, handle_success])
+    rocket::build()
+        .manage(CurrentState::default())
+        .mount("/", routes![start_demo, handle_success])
 }

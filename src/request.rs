@@ -26,6 +26,10 @@ impl<'a> Request<'a> {
             nonce: generate_nonce(),
         }
     }
+
+    pub fn get_state(&self) -> &str {
+        &self.state
+    }
 }
 
 pub fn generate_nonce<'a>() -> String {
