@@ -3,7 +3,7 @@ use rocket::{response::Redirect, State};
 use std::env;
 use std::sync::Mutex;
 
-// withouth ? for start of query, which is added by "to_url"
+// without ? for start of query, which is added by "to_url"
 const OPENID_PROVIDER: &'static str = "https://accounts.google.com/o/oauth2/v2/auth";
 
 #[derive(Default, Debug)]
