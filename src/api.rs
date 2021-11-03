@@ -31,6 +31,6 @@ pub fn handle_success(query: String, local_state: &State<CurrentState>) {
     println!("Ther Query: {}", query);
     println!(
         "And this is the local state: {:?}. Are they the same?",
-        local_state
+        local_state.inner().0.lock().unwrap()
     );
 }
