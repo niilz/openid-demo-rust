@@ -10,7 +10,7 @@ pub struct Request<'a> {
     scope: Vec<&'a str>,
     redirect_uri: &'a str,
     state: String, // security_token%3D138r5719ru3e1%26url%3Dhttps%3A%2F%2Foauth2-login-demo.example.com%2FmyHome&
-    // login_hint: String, jsmith@example.com&
+    login_hint: &'a str, // jsmith@example.com
     nonce: String,
 }
 
@@ -22,7 +22,7 @@ impl<'a> Request<'a> {
             scope: vec!["openid", "email", "profile"],
             redirect_uri: REDIRECT_URI,
             state: generate_sec_token(42),
-            // login_hint: daredevdiary@gmail.com,
+            login_hint: "daredevdiary@gmail.com",
             nonce: generate_nonce(),
         }
     }
@@ -61,7 +61,7 @@ mod tests {
             scope: vec!["openid", "email", "profile"],
             redirect_uri: "http://dummy-redirect.com",
             state: "security_token0815".to_string(), // generate_sec_token(42),
-            // login_hint: daredevdiary@gmail.com,
+            login_hint: "dummy@gmail.com",
             nonce: "80085-3531".to_string(), // generate_nonce(),
         };
         assert_eq!(
@@ -72,6 +72,7 @@ mod tests {
                 scope=openid%20email%20profile&\
                 redirect_uri=http://dummy-redirect.com&\
                 state=security_token0815&\
+                login_hint=dummy@gmail.com&\
                 nonce=80085-3531"
                 .to_string()
         );
