@@ -51,14 +51,33 @@ pub fn generate_sec_token<'a>(special_number: u8) -> String {
     )
 }
 
-pub struct TokenRequest {}
+#[derive(Debug, ToUrl)]
+pub struct TokenRequest<'a> {
+    code: &'a str,
+    client_id: &'a str,
+    client_secret: &'a str,
+    redirect_uri: &'a str,
+    grant_type: &'a str, // authorization_code
+}
+
+impl<'a> TokenRequest<'a> {
+    pub fn new(code: &'a str, client_id: &'a str, client_secret: &'a str) -> Self {
+        TokenRequest {
+            code,
+            client_id,
+            client_secret,
+            redirect_uri: REDIRECT_URI,
+            grant_type: "authorization_code",
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn to_url_creates_correct_url_for_request() {
+    fn to_url_creates_correct_url_for_auth_request() {
         let dummy_req = AuthCodeRequest {
             response_type: "code",
             client_id: "1234andSomeText", // e.g 424911365001.apps.googleusercontent.com&
@@ -69,7 +88,7 @@ mod tests {
             nonce: "80085-3531".to_string(), // generate_nonce(),
         };
         assert_eq!(
-            dummy_req.to_url("https://my-dummy-op".to_string()),
+            dummy_req.to_url("https://my-dummy-op?".to_string()),
             "https://my-dummy-op?\
                 response_type=code&\
                 client_id=1234andSomeText&\
@@ -78,6 +97,26 @@ mod tests {
                 state=security_token0815&\
                 login_hint=dummy@gmail.com&\
                 nonce=80085-3531"
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn to_url_creates_correct_url_for_token_request() {
+        let dummy_req = TokenRequest {
+            code: "you-gave-me-this-123",
+            client_id: "1234andSomeText", // e.g 424911365001.apps.googleusercontent.com&
+            client_secret: "psssecret",
+            redirect_uri: "http://dummy-redirect.com",
+            grant_type: "authorization_code",
+        };
+        assert_eq!(
+            dummy_req.to_url("".to_string()),
+            "code=you-gave-me-this-123&\
+            client_id=1234andSomeText&\
+            client_secret=psssecret&\
+            redirect_uri=http://dummy-redirect.com&\
+            grant_type=authorization_code"
                 .to_string()
         );
     }
