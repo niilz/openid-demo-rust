@@ -51,6 +51,7 @@ pub fn generate_sec_token<'a>(special_number: u8) -> String {
     )
 }
 
+// TODO: Probably don't need ToUrl anymore
 #[derive(Debug, ToUrl, Serialize)]
 pub struct TokenRequest<'a> {
     code: &'a str,
