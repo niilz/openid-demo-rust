@@ -4,7 +4,7 @@ use to_url::ToUrl;
 const REDIRECT_URI: &'static str = "http%3A//localhost:8000/success";
 
 #[derive(Debug, ToUrl)]
-pub struct Request<'a> {
+pub struct AuthCodeRequest<'a> {
     response_type: &'a str,
     client_id: &'a str,
     scope: Vec<&'a str>,
@@ -14,9 +14,9 @@ pub struct Request<'a> {
     nonce: String,
 }
 
-impl<'a> Request<'a> {
+impl<'a> AuthCodeRequest<'a> {
     pub fn new(client_id: &'a str) -> Self {
-        Request {
+        AuthCodeRequest {
             response_type: "code",
             client_id, // e.g 424911365001.apps.googleusercontent.com&
             scope: vec!["openid", "email", "profile"],
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn to_url_creates_correct_url_for_request() {
-        let dummy_req = Request {
+        let dummy_req = AuthCodeRequest {
             response_type: "code",
             client_id: "1234andSomeText", // e.g 424911365001.apps.googleusercontent.com&
             scope: vec!["openid", "email", "profile"],

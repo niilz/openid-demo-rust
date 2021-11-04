@@ -1,4 +1,4 @@
-use crate::request::Request;
+use crate::request::AuthCodeRequest;
 use rocket::{
     response::Redirect,
     serde::json::{json, Value},
@@ -34,7 +34,7 @@ impl CurrentState {
 #[get("/start")]
 pub async fn start_demo(request_state: &State<CurrentState>) -> Redirect {
     let client_id = env::var("CLIENT_ID").expect("Please define client ID (get it from google-app-credentials-dashboard) as env-var CLIENT_ID");
-    let req = Request::new(&client_id);
+    let req = AuthCodeRequest::new(&client_id);
     let state = req.get_state().to_string();
     request_state.init_for_req(state);
     let url = req.to_url(OPENID_PROVIDER.to_string());
