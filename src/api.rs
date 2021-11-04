@@ -1,10 +1,12 @@
-use crate::request::{AuthCodeRequest, TokenRequest};
+use crate::{
+    credentials::Credentials,
+    request::{AuthCodeRequest, TokenRequest},
+};
 use rocket::{
     response::Redirect,
     serde::json::{json, Value},
     State,
 };
-use std::env;
 use std::sync::Mutex;
 
 const AUTH_CODE_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
@@ -32,9 +34,11 @@ impl CurrentState {
 }
 
 #[get("/start")]
-pub async fn start_demo(request_state: &State<CurrentState>) -> Redirect {
-    let client_id = env::var("CLIENT_ID").expect("Please define client ID (get it from google-app-credentials-dashboard) as env-var CLIENT_ID");
-    let req = AuthCodeRequest::new(&client_id);
+pub async fn start_demo(
+    request_state: &State<CurrentState>,
+    credentials: &State<Credentials>,
+) -> Redirect {
+    let req = AuthCodeRequest::new(&credentials.client_id);
     let state = req.get_state().to_string();
     request_state.init_for_req(state);
     let url = req.to_url(AUTH_CODE_URL.to_string());
@@ -42,15 +46,19 @@ pub async fn start_demo(request_state: &State<CurrentState>) -> Redirect {
 }
 
 #[get("/success?<state>&<code>")]
-pub async fn handle_success(state: &str, code: &str, local_state: &State<CurrentState>) -> Value {
-    let client_id = env::var("CLIENT_ID").expect("Please define client ID (get it from google-app-credentials-dashboard) as env-var CLIENT_ID");
-    let client_secret = env::var("CLIENT_SECRET").expect("Please define client secret (get it from google-app-credentials-dashboard) as env-var CLIENT_SECRET");
+pub async fn handle_success(
+    state: &str,
+    code: &str,
+    local_state: &State<CurrentState>,
+    credentials: &State<Credentials>,
+) -> Value {
     println!("Ther state: {}", state);
     println!("Ther code: {}", code);
     if !local_state.cmp_inner_with(state) {
         return json!("Cross-Site-Request-Forgery is not cool!");
     }
-    let (access_token, id_token) = get_tokens(code, &client_id, &client_secret).await;
+    let (access_token, id_token) =
+        get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
     json!("Getting the ID-Token")
 }
 

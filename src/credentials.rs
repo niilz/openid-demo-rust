@@ -1,8 +1,8 @@
 use std::env;
 
 pub struct Credentials {
-    client_id: String,
-    client_secret: String,
+    pub client_id: String,
+    pub client_secret: String,
 }
 
 impl Credentials {
