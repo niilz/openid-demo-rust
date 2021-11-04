@@ -1,7 +1,9 @@
 use rand::{thread_rng, Rng};
 use to_url::ToUrl;
 
-const REDIRECT_URI: &'static str = "http%3A//localhost:8000/success";
+const REDIRECT_URI: &str = "http%3A//localhost:8000/success";
+const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
+const DISCOVERY_DOCUMENT: &str = "https://accounts.google.com/.well-known/openid-configuration";
 
 #[derive(Debug, ToUrl)]
 pub struct AuthCodeRequest<'a> {
@@ -48,6 +50,8 @@ pub fn generate_sec_token<'a>(special_number: u8) -> String {
         special_number
     )
 }
+
+pub struct TokenRequest {}
 
 #[cfg(test)]
 mod tests {
