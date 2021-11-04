@@ -2,7 +2,6 @@ use rand::{thread_rng, Rng};
 use to_url::ToUrl;
 
 const REDIRECT_URI: &str = "http%3A//localhost:8000/success";
-const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
 const DISCOVERY_DOCUMENT: &str = "https://accounts.google.com/.well-known/openid-configuration";
 
 #[derive(Debug, ToUrl)]

@@ -1,4 +1,4 @@
-use crate::request::AuthCodeRequest;
+use crate::request::{AuthCodeRequest, TokenRequest};
 use rocket::{
     response::Redirect,
     serde::json::{json, Value},
@@ -7,7 +7,8 @@ use rocket::{
 use std::env;
 use std::sync::Mutex;
 
-const OPENID_PROVIDER: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
+const AUTH_CODE_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
+const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
 
 #[derive(Default, Debug)]
 pub struct CurrentState(Mutex<String>);
@@ -36,15 +37,32 @@ pub async fn start_demo(request_state: &State<CurrentState>) -> Redirect {
     let req = AuthCodeRequest::new(&client_id);
     let state = req.get_state().to_string();
     request_state.init_for_req(state);
-    let url = req.to_url(OPENID_PROVIDER.to_string());
+    let url = req.to_url(AUTH_CODE_URL.to_string());
     Redirect::to(url)
 }
 
 #[get("/success?<state>&<code>")]
-pub fn handle_success(state: &str, code: &str, local_state: &State<CurrentState>) -> Value {
+pub async fn handle_success(state: &str, code: &str, local_state: &State<CurrentState>) -> Value {
+    let client_id = env::var("CLIENT_ID").expect("Please define client ID (get it from google-app-credentials-dashboard) as env-var CLIENT_ID");
+    let client_secret = env::var("CLIENT_SECRET").expect("Please define client secret (get it from google-app-credentials-dashboard) as env-var CLIENT_SECRET");
     println!("Ther state: {}", state);
     println!("Ther code: {}", code);
-    json!(local_state.cmp_inner_with(state))
+    if !local_state.cmp_inner_with(state) {
+        return json!("Cross-Site-Request-Forgery is not cool!");
+    }
+    let (access_token, id_token) = get_tokens(code, &client_id, &client_secret).await;
+    json!("Getting the ID-Token")
+}
+
+async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
+    let token_request = TokenRequest::new(code, client_id, client_secret);
+    let res = reqwest::Client::new()
+        .post(TOKEN_ENDPOINT)
+        .form(&token_request.to_url("".to_string()))
+        .send()
+        .await
+        .unwrap();
+    ("auth".to_string(), "id".to_string())
 }
 
 #[cfg(test)]
