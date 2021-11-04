@@ -1,5 +1,9 @@
 use crate::request::Request;
-use rocket::{response::Redirect, State};
+use rocket::{
+    response::Redirect,
+    serde::json::{json, Value},
+    State,
+};
 use std::env;
 use std::sync::Mutex;
 
@@ -18,6 +22,15 @@ impl CurrentState {
     }
 }
 
+impl CurrentState {
+    fn cmp_inner_with(&self, other: impl AsRef<str>) -> bool {
+        match self.0.lock() {
+            Ok(token) => *token == other.as_ref(),
+            Err(e) => panic!("Could not get the lock to the inner. Err: {}", e),
+        }
+    }
+}
+
 #[get("/start")]
 pub async fn start_demo(request_state: &State<CurrentState>) -> Redirect {
     let client_id = env::var("CLIENT_ID").expect("Please define client ID (get it from google-app-credentials-dashboard) as env-var CLIENT_ID");
@@ -28,11 +41,22 @@ pub async fn start_demo(request_state: &State<CurrentState>) -> Redirect {
     Redirect::to(url)
 }
 
-#[get("/success?<query..>")]
-pub fn handle_success(query: String, local_state: &State<CurrentState>) {
-    println!("Ther Query: {}", query);
-    println!(
-        "And this is the local state: {:?}. Are they the same?",
-        local_state.inner().0.lock().unwrap()
-    );
+#[get("/success?<state>&<code>")]
+pub fn handle_success(state: &str, code: &str, local_state: &State<CurrentState>) -> Value {
+    println!("Ther state: {}", state);
+    println!("Ther code: {}", code);
+    json!(local_state.cmp_inner_with(state))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CurrentState;
+    use std::sync::Mutex;
+
+    #[test]
+    fn can_turn_state_into_string() {
+        let expected = "inner_token".to_string();
+        let state = CurrentState(Mutex::new("inner_token".to_string()));
+        assert!(state.cmp_inner_with(expected));
+    }
 }
