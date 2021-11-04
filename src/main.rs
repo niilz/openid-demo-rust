@@ -2,12 +2,11 @@
 extern crate rocket;
 
 use openid::api::*;
+use openid::credentials::Credentials;
 
-//#[tokio::main]
 #[launch]
 fn app() -> _ {
-    //let res = reqwest::get("http://google.de").await?.text().await?;
-    //println!("{:?}", res);
+    let credentials = Credentials::init();
 
     rocket::build()
         .manage(CurrentState::default())
