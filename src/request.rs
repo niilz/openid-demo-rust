@@ -1,4 +1,5 @@
 use rand::{thread_rng, Rng};
+use serde::Serialize;
 use to_url::ToUrl;
 
 const REDIRECT_URI: &str = "http%3A//localhost:8000/success";
@@ -50,7 +51,7 @@ pub fn generate_sec_token<'a>(special_number: u8) -> String {
     )
 }
 
-#[derive(Debug, ToUrl)]
+#[derive(Debug, ToUrl, Serialize)]
 pub struct TokenRequest<'a> {
     code: &'a str,
     client_id: &'a str,

@@ -66,10 +66,11 @@ async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String
     let token_request = TokenRequest::new(code, client_id, client_secret);
     let res = reqwest::Client::new()
         .post(TOKEN_ENDPOINT)
-        .form(&token_request.to_url("".to_string()))
+        .form(&token_request)
         .send()
         .await
         .unwrap();
+    println!("RES: {:?}", res);
     ("auth".to_string(), "id".to_string())
 }
 
