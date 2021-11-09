@@ -45,6 +45,7 @@ pub async fn start_demo(
     Redirect::to(url)
 }
 
+// Handle the authorization-code-response
 #[get("/success?<state>&<code>")]
 pub async fn handle_success(
     state: &str,
@@ -59,18 +60,28 @@ pub async fn handle_success(
     }
     let (access_token, id_token) =
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
-    json!("Getting the ID-Token")
+    json!(format!(
+        "dummy-access: {}, dummy-id: {}",
+        access_token, id_token
+    ))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
     let token_request = TokenRequest::new(code, client_id, client_secret);
-    let res = reqwest::Client::new()
+    println!("token_url: {}", token_request.to_url("".to_string()));
+
+    // Get the access- and the identity-token
+    let req = reqwest::Client::new()
         .post(TOKEN_ENDPOINT)
-        .form(&token_request)
-        .send()
-        .await
-        .unwrap();
-    println!("RES: {:?}", res);
+        .form(&token_request);
+
+    println!("Req: {:#?}", req);
+
+    let res = req.send().await.unwrap();
+    println!("RES: {:#?}", res);
+
+    let tokens = res.json::<Value>().await;
+    println!("Value: {:#?}", tokens);
     ("auth".to_string(), "id".to_string())
 }
 
