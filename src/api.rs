@@ -80,9 +80,11 @@ async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String
     let res = req.send().await.unwrap();
     println!("RES: {:#?}", res);
 
-    let tokens = res.json::<Value>().await;
-    println!("Value: {:#?}", tokens);
-    ("auth".to_string(), "id".to_string())
+    let tokens = res.json::<Value>().await.unwrap();
+    (
+        tokens["access_token"].to_string(),
+        tokens["id_token"].to_string(),
+    )
 }
 
 #[cfg(test)]
