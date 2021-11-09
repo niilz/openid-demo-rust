@@ -2,7 +2,8 @@ use rand::{thread_rng, Rng};
 use serde::Serialize;
 use to_url::ToUrl;
 
-const REDIRECT_URI: &str = "http%3A//localhost:8000/success";
+//const REDIRECT_URI: &str = "http%3A//localhost%3A8000/success";
+const REDIRECT_URI: &str = "http://localhost:8000/success";
 const DISCOVERY_DOCUMENT: &str = "https://accounts.google.com/.well-known/openid-configuration";
 
 #[derive(Debug, ToUrl)]
