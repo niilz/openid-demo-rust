@@ -68,17 +68,14 @@ pub async fn handle_success(
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
     let token_request = TokenRequest::new(code, client_id, client_secret);
-    println!("token_url: {}", token_request.to_url("".to_string()));
 
     // Get the access- and the identity-token
-    let req = reqwest::Client::new()
+    let res = reqwest::Client::new()
         .post(TOKEN_ENDPOINT)
-        .form(&token_request);
-
-    println!("Req: {:#?}", req);
-
-    let res = req.send().await.unwrap();
-    println!("RES: {:#?}", res);
+        .form(&token_request)
+        .send()
+        .await
+        .unwrap();
 
     let tokens = res.json::<Value>().await.unwrap();
     (
