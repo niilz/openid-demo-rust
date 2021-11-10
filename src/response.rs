@@ -2,13 +2,13 @@ use serde::Deserialize;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct TokenResponse {
-    access_token: String,
-    expires_in: String,
-    id_token: String,
-    scope: String,
-    token_type: String,
+    pub access_token: String,
+    pub expires_in: u32,
+    pub id_token: String,
+    pub scope: String,
+    pub token_type: String,
     // Only present if 'access_type' was set to 'offline'
-    refresh_token: Option<String>,
+    pub refresh_token: Option<String>,
 }
 
 #[cfg(test)]
