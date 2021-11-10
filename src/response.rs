@@ -20,7 +20,7 @@ mod tests {
     fn can_deserialize_token_response() {
         let serialized_token_response = json!({
             "access_token": "acc-ess-token-123",
-            "expires_in": "123456",
+            "expires_in": 123456,
             "id_token": "id-token-456",
             "scope": "openid email",
             "token_type": "Bearer",
@@ -30,7 +30,7 @@ mod tests {
 
         let expected_deserialized_token_response = TokenResponse {
             access_token: "acc-ess-token-123".to_string(),
-            expires_in: "123456".to_string(),
+            expires_in: 123456,
             id_token: "id-token-456".to_string(),
             scope: "openid email".to_string(),
             token_type: "Bearer".to_string(),
