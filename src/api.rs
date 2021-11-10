@@ -1,6 +1,7 @@
 use crate::{
     credentials::Credentials,
     request::{AuthCodeRequest, TokenRequest},
+    response::TokenResponse,
 };
 use rocket::{
     response::Redirect,
@@ -58,10 +59,11 @@ pub async fn handle_success(
     }
     let (access_token, id_token) =
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
-    json!(format!(
-        "dummy-access: {}, dummy-id: {}",
-        access_token, id_token
-    ))
+    // TODO: Use ID-Token:
+    //  - optional: validate
+    //  - base64 decode
+    //  - read claims
+    json!(format!("access: {}, id: {}", access_token, id_token))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
@@ -75,11 +77,8 @@ async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String
         .await
         .unwrap();
 
-    let tokens = res.json::<Value>().await.unwrap();
-    (
-        tokens["access_token"].to_string(),
-        tokens["id_token"].to_string(),
-    )
+    let token_response = res.json::<TokenResponse>().await.unwrap();
+    (token_response.access_token, token_response.id_token)
 }
 
 #[cfg(test)]
