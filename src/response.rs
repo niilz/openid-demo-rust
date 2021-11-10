@@ -18,16 +18,17 @@ mod tests {
 
     #[test]
     fn can_deserialize_token_response() {
-        let serialized_token = json!({
+        let serialized_token_response = json!({
             "access_token": "acc-ess-token-123",
             "expires_in": "123456",
             "id_token": "id-token-456",
             "scope": "openid email",
             "token_type": "Bearer",
+            // Notice that the refresh_token is not set
         })
         .to_string();
 
-        let expected_response = TokenResponse {
+        let expected_deserialized_token_response = TokenResponse {
             access_token: "acc-ess-token-123".to_string(),
             expires_in: "123456".to_string(),
             id_token: "id-token-456".to_string(),
@@ -36,7 +37,7 @@ mod tests {
             refresh_token: None,
         };
 
-        let deserialized_token = from_str::<TokenResponse>(&serialized_token).unwrap();
-        assert_eq!(expected_response, deserialized_token);
+        let deserialized_token = from_str::<TokenResponse>(&serialized_token_response).unwrap();
+        assert_eq!(expected_deserialized_token_response, deserialized_token);
     }
 }
