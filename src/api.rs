@@ -8,7 +8,7 @@ use rocket::{
     serde::json::{json, Value},
     State,
 };
-use std::sync::Mutex;
+use std::{str::from_utf8, sync::Mutex};
 
 const AUTH_CODE_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
 const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
@@ -59,11 +59,24 @@ pub async fn handle_success(
     }
     let (access_token, id_token) =
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
+
+    let dot_idx = id_token.chars().position(|c| c == '.').unwrap();
+    let (header, payload_sig) = id_token.split_at(dot_idx);
+    let dot_idx = payload_sig.chars().position(|c| c == '.').unwrap();
+    let (payload, sinature) = payload_sig.split_at(dot_idx);
+
+    println!("ID-TOKEN-Header: {:?}", header);
+    let id_token_header = base64::decode(header.trim()).unwrap();
+    let id_token_header = from_utf8(&id_token_header).unwrap();
+    println!("Decoded Token: {:?}", id_token_header);
     // TODO: Use ID-Token:
     //  - optional: validate
     //  - base64 decode
     //  - read claims
-    json!(format!("access: {}, id: {}", access_token, id_token))
+    json!(format!(
+        "access: {}, id: {:#?}",
+        access_token, id_token_header
+    ))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
