@@ -53,8 +53,6 @@ pub async fn handle_success(
     local_state: &State<CurrentState>,
     credentials: &State<Credentials>,
 ) -> Value {
-    println!("Ther state: {}", state);
-    println!("Ther code: {}", code);
     if !local_state.cmp_inner_with(state) {
         return json!("Cross-Site-Request-Forgery is not cool!");
     }
