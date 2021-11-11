@@ -65,13 +65,13 @@ pub async fn handle_success(
     let jwt = destruct_jwt(&id_token);
 
     // TODO: Use ID-Token:
-    //  - optional: validate
+    //  - optional: validate (use Signature to verify token-authenticity)
     //  - base64 decode
     let header_decoded = base64::decode(jwt.header).unwrap();
     let header_decoded = from_utf8(&header_decoded).unwrap();
     let payload_decoded = base64::decode(jwt.payload).unwrap();
     let payload_decoded = from_utf8(&payload_decoded).unwrap();
-    //let signature_decoded = base64::decode(jwt.signature).unwrap();
+
     //  - read claims
     json!(format!(
         "header: {}, payload: {}",
