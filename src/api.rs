@@ -9,6 +9,7 @@ use rocket::{
     serde::json::{json, Value},
     State,
 };
+use std::str::from_utf8;
 use std::sync::Mutex;
 
 const AUTH_CODE_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
@@ -66,10 +67,15 @@ pub async fn handle_success(
     // TODO: Use ID-Token:
     //  - optional: validate
     //  - base64 decode
+    let header_decoded = base64::decode(jwt.header).unwrap();
+    let header_decoded = from_utf8(&header_decoded).unwrap();
+    let payload_decoded = base64::decode(jwt.payload).unwrap();
+    let payload_decoded = from_utf8(&payload_decoded).unwrap();
+    //let signature_decoded = base64::decode(jwt.signature).unwrap();
     //  - read claims
     json!(format!(
-        "access: {}, id-header: {:#?}",
-        access_token, jwt.header
+        "header: {}, payload: {}",
+        header_decoded, payload_decoded
     ))
 }
 
