@@ -1,5 +1,3 @@
-use std::str::from_utf8;
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct Jwt {
     pub header: String,
@@ -8,36 +6,15 @@ pub struct Jwt {
 }
 
 pub fn destruct_jwt(id_token: &str) -> Jwt {
-    let dot_idx = id_token.chars().position(|c| c == '.').unwrap();
-    let (header, payload_sig) = id_token.split_at(dot_idx);
-    println!("payload_sig: {:?}", payload_sig);
-    println!();
-    let dot_idx = payload_sig
-        .strip_prefix('.')
-        .unwrap()
-        .chars()
-        .position(|c| c == '.')
-        .unwrap();
-    let (payload, signature) = payload_sig.split_at(dot_idx);
-
-    println!("ID-TOKEN-Header: {:?}", header);
-    println!();
-    let header = base64::decode(header.trim()).unwrap();
-    let header = from_utf8(&header).unwrap().to_string();
-    println!("Decoded Token: {:?}", header);
-    println!();
-
-    println!("ID-TOKEN-payload: {:?}", payload);
-    println!();
-    let payload = base64::decode(payload.strip_prefix('.').unwrap().trim()).unwrap();
-    let payload = from_utf8(&payload).unwrap().to_string();
-    println!("Decoded payload: {:?}", payload);
-    println!();
+    let mut token_parts = id_token.split('.');
+    let header = token_parts.next().unwrap().to_string();
+    let payload = token_parts.next().unwrap().to_string();
+    let signature = token_parts.next().unwrap().to_string();
 
     Jwt {
         header,
         payload,
-        signature: "sig".to_string(),
+        signature,
     }
 }
 
