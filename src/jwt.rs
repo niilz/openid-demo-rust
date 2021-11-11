@@ -18,7 +18,7 @@ pub fn destruct_jwt(id_token: &str) -> Jwt {
         .chars()
         .position(|c| c == '.')
         .unwrap();
-    let (payload, sinature) = payload_sig.split_at(dot_idx);
+    let (payload, signature) = payload_sig.split_at(dot_idx);
 
     println!("ID-TOKEN-Header: {:?}", header);
     println!();
