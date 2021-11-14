@@ -11,5 +11,5 @@ fn app() -> _ {
     rocket::build()
         .manage(CurrentState::default())
         .manage(credentials)
-        .mount("/", routes![start_demo, handle_success])
+        .mount("/", routes![login, handle_success])
 }
