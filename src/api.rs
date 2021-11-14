@@ -35,8 +35,8 @@ impl CurrentState {
     }
 }
 
-#[get("/start")]
-pub async fn start_demo(
+#[get("/login")]
+pub async fn login(
     request_state: &State<CurrentState>,
     credentials: &State<Credentials>,
 ) -> Redirect {
@@ -58,7 +58,7 @@ pub async fn handle_success(
     if !local_state.cmp_inner_with(state) {
         return json!("Cross-Site-Request-Forgery is not cool!");
     }
-    let (access_token, id_token) =
+    let (_access_token, id_token) =
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
 
     let jwt = destruct_jwt(&id_token).unwrap();
