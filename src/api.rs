@@ -1,12 +1,12 @@
 use crate::{
     credentials::Credentials,
-    jwt::destruct_jwt,
+    jwt::{destruct_jwt, Payload},
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
 };
 use rocket::{
     response::Redirect,
-    serde::json::{json, Value},
+    serde::json::{self, json, Value},
     State,
 };
 use std::sync::Mutex;
@@ -62,11 +62,12 @@ pub async fn handle_success(
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
 
     let jwt = destruct_jwt(&id_token).unwrap();
+    let payload: Payload = json::from_str(&jwt.payload).unwrap();
 
     // TODO: Use ID-Token:
     //  - optional: validate (use Signature to verify token-authenticity)
     //  - read claims
-    json!(format!("header: {}, payload: {}", jwt.header, jwt.payload))
+    json!(format!("header: {},\npayload: {:?}", jwt.header, payload))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
