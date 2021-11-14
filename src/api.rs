@@ -62,21 +62,12 @@ pub async fn handle_success(
     let (access_token, id_token) =
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
 
-    let jwt = destruct_jwt(&id_token);
+    let jwt = destruct_jwt(&id_token).unwrap();
 
     // TODO: Use ID-Token:
     //  - optional: validate (use Signature to verify token-authenticity)
-    //  - base64 decode
-    let header_decoded = base64::decode(jwt.header).unwrap();
-    let header_decoded = from_utf8(&header_decoded).unwrap();
-    let payload_decoded = base64::decode(jwt.payload).unwrap();
-    let payload_decoded = from_utf8(&payload_decoded).unwrap();
-
     //  - read claims
-    json!(format!(
-        "header: {}, payload: {}",
-        header_decoded, payload_decoded
-    ))
+    json!(format!("header: {}, payload: {}", jwt.header, jwt.payload))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
