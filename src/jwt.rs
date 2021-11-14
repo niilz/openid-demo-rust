@@ -1,3 +1,5 @@
+use serde::Deserialize;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Jwt {
     pub header: String,
@@ -28,7 +30,8 @@ fn get_token_parts(id_token: &str) -> Vec<String> {
     header_and_payload
 }
 
-struct Payload {
+#[derive(Deserialize, Debug)]
+pub struct Payload {
     // ALWAYS: The audience that this ID token is intended for
     aud: String,
     // ALWAYS: Expiration time on or after which the ID token must not be accepted. Represented in Unix time (integer seconds).
