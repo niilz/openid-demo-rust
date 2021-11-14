@@ -48,7 +48,15 @@ mod tests {
 
     #[test]
     fn can_destructure_jwt() {
-        let id_token = "header-stuff-algo-256.payload-12345-claims.sIgNaTuRe";
+        let header = "header-stuff-algo-256";
+        let payload = "payload-12345-claims";
+        let signature = "ignored";
+
+        let id_token = [header, payload, signature]
+            .iter()
+            .map(|part| base64::encode(part))
+            .collect::<Vec<String>>()
+            .join(".");
 
         let expected_jwt = Jwt {
             header: "header-stuff-algo-256".to_string(),
