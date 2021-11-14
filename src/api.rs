@@ -40,7 +40,7 @@ pub async fn login(
     request_state: &State<CurrentState>,
     credentials: &State<Credentials>,
 ) -> Redirect {
-    // Step: 1 (Authorization-Request)
+    // Step: 1 (Authentication-Request)
 
     // Collect the values that make up an OIDC-Auth-Code-Request
     let req = AuthCodeRequest::new(&credentials.client_id);
@@ -52,10 +52,19 @@ pub async fn login(
     // Redircet to the cunstructed request-url
     // (Also see: 3.1.2 Authorization Endpoint at
     // https://openid.net/specs/openid-connect-core-1_0.html)
+    //
+    // After a sucessful User-Login, the IP redirect to
+    // the specified 'redirect_uri'
     Redirect::to(url)
 }
 
 // Handle the authorization-code-response
+// This edpoint is called by the IP, if the User-Login was
+// sucessful
+//
+// The query contains the state-nounce we send in the Authentication-
+// Rquest, AND the Authorization-Code.
+// Other query-params like email are ignored
 #[get("/success?<state>&<code>")]
 pub async fn handle_success(
     state: &str,
@@ -63,18 +72,26 @@ pub async fn handle_success(
     local_state: &State<CurrentState>,
     credentials: &State<Credentials>,
 ) -> Value {
+    // Step: 2 (Token Request)
+
+    // First: Check that state-nounce is the once we sent in step 1
     if !local_state.cmp_inner_with(state) {
         return json!("Cross-Site-Request-Forgery is not cool!");
     }
+    // Second: Ask for access- and id-token, by providing the authorization-
+    // code we retreived in in the quer-parameters (perfomed as a POST-request)
     let (_access_token, id_token) =
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
 
+    // Step: 3 (Obtain user-data/claims)
+    // Decode the identity-token to obtain user-information
     let jwt = destruct_jwt(&id_token).unwrap();
     let payload: Payload = json::from_str(&jwt.payload).unwrap();
+    //  TODO: validate token-authenticity with signature
 
-    // TODO: Use ID-Token:
-    //  - optional: validate (use Signature to verify token-authenticity)
-    //  - read claims
+    // Step: 4 TODO (Use ID-Token)
+    // Save the User to the database, if not exist
+    // Create a session
     json!(format!("header: {},\npayload: {:?}", jwt.header, payload))
 }
 
