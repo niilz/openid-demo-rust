@@ -11,6 +11,7 @@ pub fn destruct_jwt(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
         return Ok(Jwt {
             header: header.to_string(),
             payload: payload.to_string(),
+            // TODO: Decrypt-Signature
             signature: None,
         });
     };
@@ -25,6 +26,40 @@ fn get_token_parts(id_token: &str) -> Vec<String> {
         .filter_map(|part| String::from_utf8(part).ok())
         .collect();
     header_and_payload
+}
+
+struct Payload {
+    // ALWAYS: The audience that this ID token is intended for
+    aud: String,
+    // ALWAYS: Expiration time on or after which the ID token must not be accepted. Represented in Unix time (integer seconds).
+    exp: u32,
+    // ALWAYS: The time the ID token was issued. Represented in Unix time (integer seconds).
+    iat: u32,
+    // ALWAYS: The Issuer Identifier for the Issuer of the response. Always https://accounts.google.com or accounts.google.com for Google ID tokens
+    iss: String,
+    // ALWAYS: An identifier for the user, unique among all Google accounts and never reused
+    sub: String,
+
+    // The client_id of the authorized presenter
+    azp: String,
+    // "user@email.com",
+    email: String,
+    // True if the user's e-mail address has been verified; otherwise false.
+    email_verified: bool,
+    // Access token hash. Provides validation that the access token is tied to the identity token.
+    at_hash: String,
+    // The value of the nonce supplied by your app in the authentication request
+    nonce: String,
+    // The Users full name
+    name: String,
+    // The URL of the user's profile picture
+    picture: String,
+    // The user's given name(s) or first name(s).
+    given_name: String,
+    // The user's surname(s) or last name(s).
+    family_name: String,
+    // The user's locale, represented by a BCP 47 language tag
+    locale: String,
 }
 
 #[cfg(test)]
