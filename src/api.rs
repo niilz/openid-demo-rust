@@ -40,6 +40,8 @@ pub async fn login(
     request_state: &State<CurrentState>,
     credentials: &State<Credentials>,
 ) -> Redirect {
+    // Step: 1 (Authorization-Request)
+
     // Collect the values that make up an OIDC-Auth-Code-Request
     let req = AuthCodeRequest::new(&credentials.client_id);
     // Store the state to be able to compare it later (prevent replay-attacks)
@@ -48,6 +50,8 @@ pub async fn login(
     // Turn all values into OIDC-compliant Request-Query
     let url = req.to_url(AUTH_CODE_URL.to_string());
     // Redircet to the cunstructed request-url
+    // (Also see: 3.1.2 Authorization Endpoint at
+    // https://openid.net/specs/openid-connect-core-1_0.html)
     Redirect::to(url)
 }
 
