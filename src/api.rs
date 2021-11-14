@@ -9,7 +9,6 @@ use rocket::{
     serde::json::{json, Value},
     State,
 };
-use std::str::from_utf8;
 use std::sync::Mutex;
 
 const AUTH_CODE_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
