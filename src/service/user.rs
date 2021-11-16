@@ -62,6 +62,12 @@ impl User<Fresh> {
     }
 }
 
+impl User<Conserved> {
+    pub fn get_name(&self) -> &'_ str {
+        &self.name
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::InMemoryUserRepository;
@@ -78,5 +84,17 @@ mod tests {
         repo.save(user);
         assert_eq!(1, repo.users.len());
         assert_eq!(2, repo.get_idx());
+    }
+
+    #[test]
+    fn can_get_user_name_after_it_has_been_persisted() {
+        let expected_name = "Marty".to_string();
+        let new_user = User::new(expected_name.clone());
+        // Would not work because 'get_name()' only exitst on User<Conserved>
+        // not ont User<Fresh>
+        // new_user.get_name();
+        let conserved_user = new_user.set_id(42);
+        let name = conserved_user.get_name();
+        assert_eq!(expected_name, name);
     }
 }
