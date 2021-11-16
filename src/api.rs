@@ -3,6 +3,7 @@ use crate::{
     jwt::{destruct_jwt, Payload},
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
+    service::user::{InMemoryUserRepository, User},
 };
 use rocket::{
     response::Redirect,
@@ -71,6 +72,7 @@ pub async fn handle_success(
     code: &str,
     local_state: &State<CurrentState>,
     credentials: &State<Credentials>,
+    user_repo: &State<InMemoryUserRepository>,
 ) -> Value {
     // Step: 2 (Token Request)
 
@@ -91,10 +93,20 @@ pub async fn handle_success(
 
     // Step: 4 TODO (Use ID-Token)
     // Save the User to the database, if not exist
+    // TODO: Only new i User is really new
+    let new_user = User::new(payload.name);
+    // If new, save User to Repo
+    // TODO: Probably wrap InMemoryUserRepository in Mutex
+    // let persisted_user = user_repo.save(new_user).unwrap();
+    let mock_persisted_user = new_user.set_id(42);
+    // TODO:
     //let user_data = user_service.handle_login(payload);
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
-    json!(format!("header: {},\npayload: {:?}", jwt.header, payload))
+    json!(format!(
+        "User: '{}' has been created",
+        mock_persisted_user.get_name()
+    ))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
