@@ -16,12 +16,15 @@ impl Default for InMemoryUserRepository {
 }
 
 impl InMemoryUserRepository {
-    fn save(&mut self, user: User<Fresh>) -> Result<(), &'static str> {
+    pub fn save(&mut self, user: User<Fresh>) -> Result<User<Conserved>, &'static str> {
         self.index += 1;
         let conserve_user = user.set_id(self.index);
-        self.users.insert(self.index, conserve_user);
-        Ok(())
+        match self.users.insert(self.index, conserve_user) {
+            Some(user) => Ok(user),
+            None => Err("Could not insert User"),
+        }
     }
+
     fn get_idx(&self) -> u32 {
         self.index
     }
@@ -29,8 +32,8 @@ impl InMemoryUserRepository {
 
 pub trait Persistence {}
 
-struct Fresh;
-struct Conserved;
+pub struct Fresh;
+pub struct Conserved;
 
 impl Persistence for Fresh {}
 impl Persistence for Conserved {}
@@ -42,14 +45,15 @@ pub struct User<P: Persistence> {
 }
 
 impl User<Fresh> {
-    fn new(name: String) -> Self {
+    pub fn new(name: String) -> Self {
         User {
             id: None,
             name,
             _state: PhantomData::default(),
         }
     }
-    fn set_id(self, id: u32) -> User<Conserved> {
+    // TODO: Make private again
+    pub fn set_id(self, id: u32) -> User<Conserved> {
         User {
             name: self.name,
             id: Some(id),
