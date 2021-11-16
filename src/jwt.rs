@@ -33,36 +33,36 @@ fn get_token_parts(id_token: &str) -> Vec<String> {
 #[derive(Deserialize, Debug)]
 pub struct Payload {
     // ALWAYS: The audience that this ID token is intended for
-    aud: String,
+    pub aud: String,
     // ALWAYS: Expiration time on or after which the ID token must not be accepted. Represented in Unix time (integer seconds).
-    exp: u32,
+    pub exp: u32,
     // ALWAYS: The time the ID token was issued. Represented in Unix time (integer seconds).
-    iat: u32,
+    pub iat: u32,
     // ALWAYS: The Issuer Identifier for the Issuer of the response. Always https://accounts.google.com or accounts.google.com for Google ID tokens
-    iss: String,
+    pub iss: String,
     // ALWAYS: An identifier for the user, unique among all Google accounts and never reused
-    sub: String,
+    pub sub: String,
 
     // The client_id of the authorized presenter
-    azp: String,
+    pub azp: String,
     // "user@email.com",
-    email: String,
+    pub email: String,
     // True if the user's e-mail address has been verified; otherwise false.
-    email_verified: bool,
+    pub email_verified: bool,
     // Access token hash. Provides validation that the access token is tied to the identity token.
-    at_hash: String,
+    pub at_hash: String,
     // The value of the nonce supplied by your app in the authentication request
-    nonce: String,
+    pub nonce: String,
     // The Users full name
-    name: String,
+    pub name: String,
     // The URL of the user's profile picture
-    picture: String,
+    pub picture: String,
     // The user's given name(s) or first name(s).
-    given_name: String,
+    pub given_name: String,
     // The user's surname(s) or last name(s).
-    family_name: String,
+    pub family_name: String,
     // The user's locale, represented by a BCP 47 language tag
-    locale: String,
+    pub locale: String,
 }
 
 #[cfg(test)]
