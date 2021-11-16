@@ -76,7 +76,7 @@ pub async fn handle_success(
 
     // First: Check that state-nounce is the once we sent in step 1
     if !local_state.cmp_inner_with(state) {
-        return json!("Cross-Site-Request-Forgery is not cool!");
+        return json!({"Error": "Cross-Site-Request-Forgery is not cool!"});
     }
     // Second: Ask for access- and id-token, by providing the authorization-
     // code we retreived in in the quer-parameters (perfomed as a POST-request)
@@ -91,7 +91,9 @@ pub async fn handle_success(
 
     // Step: 4 TODO (Use ID-Token)
     // Save the User to the database, if not exist
+    //let user_data = user_service.handle_login(payload);
     // Create a session
+    //let session: Option<Session> = session_service.start_session(user_data);
     json!(format!("header: {},\npayload: {:?}", jwt.header, payload))
 }
 
