@@ -72,7 +72,7 @@ pub async fn handle_success(
     code: &str,
     local_state: &State<CurrentState>,
     credentials: &State<Credentials>,
-    user_repo: &State<InMemoryUserRepository>,
+    user_repo: &State<Mutex<InMemoryUserRepository>>,
 ) -> Value {
     // Step: 2 (Token Request)
 
@@ -89,18 +89,20 @@ pub async fn handle_success(
     // Decode the identity-token to obtain user-information
     let jwt = destruct_jwt(&id_token).unwrap();
     let payload: Payload = json::from_str(&jwt.payload).unwrap();
-    //  TODO: validate token-authenticity with signature
+    //  Optional TODO: validate token-authenticity with signature
 
-    // Step: 4 TODO (Use ID-Token)
+    // Step: 4
     // Save the User to the database, if not exist
-    // TODO: Only new i User is really new
+    // TODO: Only create if User is really new
     let new_user = User::new(payload.name);
     // If new, save User to Repo
-    // TODO: Probably wrap InMemoryUserRepository in Mutex
-    // let persisted_user = user_repo.save(new_user).unwrap();
-    let mock_persisted_user = new_user.set_id(42);
+    match user_repo.lock() {
+        Ok(mut repo) => {
+            let _conserved_user = repo.save(new_user).unwrap();
+        }
+        Err(e) => println!("Could not save user. Err: {}", e),
+    };
     // TODO:
-    //let user_data = user_service.handle_login(payload);
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
     json!(format!(
