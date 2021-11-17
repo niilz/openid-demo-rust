@@ -52,8 +52,8 @@ impl User<Fresh> {
             _state: PhantomData::default(),
         }
     }
-    // TODO: Make private again
-    pub fn set_id(self, id: u32) -> User<Conserved> {
+
+    fn set_id(self, id: u32) -> User<Conserved> {
         User {
             name: self.name,
             id: Some(id),
