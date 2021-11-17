@@ -66,6 +66,11 @@ impl User<Conserved> {
     pub fn get_name(&self) -> &'_ str {
         &self.name
     }
+    pub fn get_id(&self) -> u32 {
+        // A Conserved-User always has an ID
+        assert!(self.id.is_some());
+        self.id.unwrap()
+    }
 }
 
 #[cfg(test)]
