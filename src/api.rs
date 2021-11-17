@@ -97,18 +97,20 @@ pub async fn handle_success(
     let new_user = User::new(payload.name);
     // If new, save User to Repo
     match user_repo.lock() {
-        Ok(mut repo) => {
-            let _conserved_user = repo.save(new_user).unwrap();
-        }
-        Err(e) => println!("Could not save user. Err: {}", e),
-    };
+        Ok(mut repo) => match repo.save(new_user) {
+            Ok(conserved_user) => {
+                json!(format!(
+                    "User: '{}' has been created",
+                    conserved_user.get_name()
+                ))
+            }
+            Err(e) => json!(format!("Could not save user. Err: {}", e)),
+        },
+        Err(e) => json!(format!("Could not lock the repo. Err: {}", e)),
+    }
     // TODO:
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
-    json!(format!(
-        "User: '{}' has been created",
-        mock_persisted_user.get_name()
-    ))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
