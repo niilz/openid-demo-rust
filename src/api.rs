@@ -3,7 +3,7 @@ use crate::{
     jwt::{destruct_jwt, Payload},
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
-    service::user::{Conserved, InMemoryUserRepository, Persistence, User},
+    service::user::{Conserved, InMemoryUserRepository, User},
 };
 use rocket::{
     response::Redirect,
