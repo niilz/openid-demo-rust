@@ -732,6 +732,7 @@ dependencies = [
  "rand",
  "reqwest",
  "rocket",
+ "serde",
  "to-url",
  "tokio",
  "url",
