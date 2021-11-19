@@ -3,13 +3,14 @@ use crate::{
     jwt::{destruct_jwt, Payload},
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
-    service::user::{Conserved, InMemoryUserRepository, User},
+    service::user::{Conserved, InMemoryUserRepository, Persistence, User},
 };
 use rocket::{
     response::Redirect,
     serde::json::{self as sjson, json, Value},
     State,
 };
+use std::fmt::Debug;
 use std::sync::Mutex;
 
 const AUTH_CODE_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
@@ -119,13 +120,15 @@ fn session_user(
     user_repo: &mut Mutex<InMemoryUserRepository>,
     user_name: String,
 ) -> User<Conserved> {
-    // TODO: Only create if User is really new
-    let new_user = User::new(user_name);
-
     // If new, save User to Repo
     let mut repo = user_repo.lock().unwrap();
-    let id = repo.save(new_user);
-    repo.get_user_by_id(id).unwrap()
+    if let Some(user) = repo.get_user_by_name(&user_name) {
+        user
+    } else {
+        let new_user = User::new(user_name);
+        let id = repo.save(new_user);
+        repo.get_user_by_id(id).unwrap()
+    }
 }
 
 #[cfg(test)]
@@ -146,12 +149,41 @@ mod tests {
     #[test]
     fn create_user_if_not_present() {
         let repo = InMemoryUserRepository::default();
-        assert_eq!(repo.get_idx(), 1);
+        assert_eq!(repo.get_idx(), 0);
         let mut repo = Mutex::new(repo);
 
         // Non existing user creates a new user and stores it
         let user = session_user(&mut repo, "Marty".to_string());
-        assert_eq!(repo.lock().unwrap().get_idx(), 2);
+        assert_eq!(repo.lock().unwrap().get_idx(), 1);
         assert_eq!(user.get_name(), "Marty");
+    }
+
+    #[test]
+    fn existing_user_does_not_increase_the_idx() {
+        let repo = InMemoryUserRepository::default();
+        assert_eq!(repo.get_idx(), 0);
+
+        let mut repo = Mutex::new(repo);
+
+        // Persiste a new user and check it's id
+        let new_user = session_user(&mut repo, "Marty".to_string());
+        // Index has increased by one
+        let repo_lock = repo.lock().unwrap();
+        assert_eq!(repo_lock.get_idx(), 1);
+        drop(repo_lock);
+
+        let repo_lock = repo.lock().unwrap();
+        let persited_user = repo_lock.get_user_by_id(1);
+        drop(repo_lock);
+        assert_eq!(Ok(new_user), persited_user);
+
+        // Getting an already existing user
+        let unchanged_user = session_user(&mut repo, persited_user.unwrap().get_name().to_string());
+
+        // Id is not increased
+        assert_eq!(repo.lock().unwrap().get_idx(), 1);
+        // Id and name of the user are still the same
+        assert_eq!(unchanged_user.get_id(), 1);
+        assert_eq!(unchanged_user.get_name(), "Marty");
     }
 }
