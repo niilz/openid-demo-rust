@@ -96,6 +96,7 @@ pub async fn handle_success(
     // Save the User to or get it from the "database"
     let mut repo = user_repo.lock().unwrap();
     let user = session_user(&mut repo, payload.name);
+    drop(repo);
 
     // TODO:
     // Create a session
