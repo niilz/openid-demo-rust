@@ -21,10 +21,20 @@ impl InMemoryUserRepository {
         self.index
     }
 
-    pub fn get_user_by_id(&self, id: u32) -> Result<User<Conserved>, &'_ str> {
+    pub fn get_user_by_id(&self, id: u32) -> Result<User<Conserved>, &'static str> {
         match self.users.get(&id).to_owned() {
             Some(user) => Ok((*user).clone()),
             None => Err("User did not exist"),
+        }
+    }
+    pub fn get_user_by_name(&self, name: impl AsRef<str>) -> Option<User<Conserved>> {
+        match self
+            .users
+            .iter()
+            .find(|(_id, user)| user.get_name() == name.as_ref())
+        {
+            Some((_id, user)) => Some((*user).clone()),
+            None => None,
         }
     }
 }
@@ -77,6 +87,10 @@ impl User<Conserved> {
 
 #[cfg(test)]
 mod tests {
+    use std::marker::PhantomData;
+
+    use crate::service::user::Conserved;
+
     use super::InMemoryUserRepository;
     use super::User;
 
@@ -86,11 +100,11 @@ mod tests {
         let mut repo = InMemoryUserRepository::default();
 
         assert_eq!(0, repo.users.len());
-        assert_eq!(1, repo.get_idx());
+        assert_eq!(0, repo.get_idx());
 
         repo.save(user);
         assert_eq!(1, repo.users.len());
-        assert_eq!(2, repo.get_idx());
+        assert_eq!(1, repo.get_idx());
     }
 
     #[test]
@@ -103,5 +117,29 @@ mod tests {
         let conserved_user = new_user.set_id(42);
         let name = conserved_user.get_name();
         assert_eq!(expected_name, name);
+    }
+
+    #[test]
+    fn non_existing_user_returns_none() {
+        // Empty Repo
+        let repo = InMemoryUserRepository::default();
+        assert_eq!(None, repo.get_user_by_name("Unknown"));
+    }
+
+    #[test]
+    fn inserted_user_can_be_found() {
+        let mut repo = InMemoryUserRepository::default();
+        let new_user = User::new("Marty".to_string());
+        let new_id = repo.save(new_user);
+        assert_eq!(new_id, 1);
+
+        let expected_user = User {
+            id: Some(1),
+            name: "Marty".to_string(),
+            _state: PhantomData::default(),
+        };
+
+        let persisted_user = repo.get_user_by_name("Marty");
+        assert_eq!(persisted_user, Some(expected_user));
     }
 }
