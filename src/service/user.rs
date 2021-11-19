@@ -24,8 +24,15 @@ impl InMemoryUserRepository {
         id
     }
 
-    fn get_idx(&self) -> u32 {
+    pub fn get_idx(&self) -> u32 {
         self.index
+    }
+
+    pub fn get_user_by_id(&self, id: u32) -> Result<User<Conserved>, &'_ str> {
+        match self.users.get(&id).to_owned() {
+            Some(user) => Ok((*user).clone()),
+            None => Err("User did not exist"),
+        }
     }
 }
 
