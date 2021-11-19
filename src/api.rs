@@ -7,7 +7,7 @@ use crate::{
 };
 use rocket::{
     response::Redirect,
-    serde::json::{self, json, Value},
+    serde::json::{self as sjson, json, Value},
     State,
 };
 use std::sync::Mutex;
@@ -88,7 +88,7 @@ pub async fn handle_success(
     // Step: 3 (Obtain user-data/claims)
     // Decode the identity-token to obtain user-information
     let jwt = destruct_jwt(&id_token).unwrap();
-    let payload: Payload = json::from_str(&jwt.payload).unwrap();
+    let payload: Payload = sjson::from_str(&jwt.payload).unwrap();
     //  Optional TODO: validate token-authenticity with signature
 
     // Step: 4
