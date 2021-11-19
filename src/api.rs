@@ -3,7 +3,7 @@ use crate::{
     jwt::{destruct_jwt, Payload},
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
-    service::user::{InMemoryUserRepository, User},
+    service::user::{Conserved, InMemoryUserRepository, User},
 };
 use rocket::{
     response::Redirect,
@@ -93,24 +93,11 @@ pub async fn handle_success(
 
     // Step: 4
     // Save the User to the database, if not exist
-    // TODO: Only create if User is really new
-    let new_user = User::new(payload.name);
-    // If new, save User to Repo
-    match user_repo.lock() {
-        Ok(mut repo) => match repo.save(new_user) {
-            Ok(conserved_user) => {
-                json!(format!(
-                    "User: '{}' has been created",
-                    conserved_user.get_name()
-                ))
-            }
-            Err(e) => json!(format!("Could not save user. Err: {}", e)),
-        },
-        Err(e) => json!(format!("Could not lock the repo. Err: {}", e)),
-    }
+
     // TODO:
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
+    json!("TODO")
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
@@ -128,8 +115,24 @@ async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String
     (token_response.access_token, token_response.id_token)
 }
 
+fn session_user(
+    user_repo: &mut Mutex<InMemoryUserRepository>,
+    user_name: String,
+) -> User<Conserved> {
+    // TODO: Only create if User is really new
+    let new_user = User::new(user_name);
+
+    // If new, save User to Repo
+    let mut repo = user_repo.lock().unwrap();
+    let id = repo.save(new_user);
+    repo.get_user_by_id(id).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::api::session_user;
+    use crate::service::user::InMemoryUserRepository;
+
     use super::CurrentState;
     use std::sync::Mutex;
 
@@ -138,5 +141,17 @@ mod tests {
         let expected = "inner_token".to_string();
         let state = CurrentState(Mutex::new("inner_token".to_string()));
         assert!(state.cmp_inner_with(expected));
+    }
+
+    #[test]
+    fn create_user_if_not_present() {
+        let repo = InMemoryUserRepository::default();
+        assert_eq!(repo.get_idx(), 1);
+        let mut repo = Mutex::new(repo);
+
+        // Non existing user creates a new user and stores it
+        let user = session_user(&mut repo, "Marty".to_string());
+        assert_eq!(repo.lock().unwrap().get_idx(), 2);
+        assert_eq!(user.get_name(), "Marty");
     }
 }
