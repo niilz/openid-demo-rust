@@ -16,13 +16,12 @@ impl Default for InMemoryUserRepository {
 }
 
 impl InMemoryUserRepository {
-    pub fn save(&mut self, user: User<Fresh>) -> Result<User<Conserved>, &'static str> {
+    pub fn save(&mut self, user: User<Fresh>) -> u32 {
         self.index += 1;
         let conserve_user = user.set_id(self.index);
-        match self.users.insert(self.index, conserve_user) {
-            Some(user) => Ok(user),
-            None => Err("Could not insert User"),
-        }
+        let id = conserve_user.get_id();
+        self.users.insert(self.index, conserve_user);
+        id
     }
 
     fn get_idx(&self) -> u32 {
@@ -32,12 +31,15 @@ impl InMemoryUserRepository {
 
 pub trait Persistence {}
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Fresh;
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Conserved;
 
 impl Persistence for Fresh {}
 impl Persistence for Conserved {}
 
+#[derive(PartialEq, Eq, Debug, Hash, Clone)]
 pub struct User<P: Persistence> {
     id: Option<u32>,
     name: String,
