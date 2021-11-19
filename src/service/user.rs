@@ -1,18 +1,11 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
+#[derive(Default)]
 pub struct InMemoryUserRepository {
     index: u32,
     users: HashMap<u32, User<Conserved>>,
-}
-
-impl Default for InMemoryUserRepository {
-    fn default() -> Self {
-        InMemoryUserRepository {
-            index: 1,
-            users: HashMap::default(),
-        }
-    }
 }
 
 impl InMemoryUserRepository {
