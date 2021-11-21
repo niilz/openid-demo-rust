@@ -96,7 +96,8 @@ pub async fn handle_success(
     //  Optional TODO: validate token-authenticity with signature
 
     // Step: 4
-    // Save the User to or get it from the "database"
+    // If User is new register the user by saving it into the repository
+    // Otherwise get the user from the repository
     let mut repo = user_repo.lock().unwrap();
     let user = session_user(&mut repo, payload.name);
     drop(repo);
