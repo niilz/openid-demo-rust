@@ -1,4 +1,3 @@
-use reqwest::Client;
 use serde::Deserialize;
 
 const GOOGLE_WELL_KNOWN_DOC: &str = "https://accounts.google.com/.well-known/openid-configuration";
@@ -118,5 +117,32 @@ mod tests {
             &well_known_data.code_challenge_methods_supported,
         );
         assert!(all_code_challenge_methods_supported_are_correct);
+
+        // Check the single-value fields
+        assert_eq!(well_known_data.issuer, "https://accounts.google.com");
+        assert_eq!(
+            well_known_data.authorization_endpoint,
+            "https://accounts.google.com/o/oauth2/v2/auth"
+        );
+        assert_eq!(
+            well_known_data.device_authorization_endpoint,
+            "https://oauth2.googleapis.com/device/code"
+        );
+        assert_eq!(
+            well_known_data.token_endpoint,
+            "https://oauth2.googleapis.com/token"
+        );
+        assert_eq!(
+            well_known_data.userinfo_endpoint,
+            "https://openidconnect.googleapis.com/v1/userinfo"
+        );
+        assert_eq!(
+            well_known_data.revocation_endpoint,
+            "https://oauth2.googleapis.com/revoke"
+        );
+        assert_eq!(
+            well_known_data.jwks_uri,
+            "https://www.googleapis.com/oauth2/v3/certs"
+        );
     }
 }
