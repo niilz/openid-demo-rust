@@ -24,8 +24,19 @@ struct IpMetaInformation {
 #[cfg(test)]
 mod tests {
 
-    use crate::meta::check_all_values;
     use crate::meta::{IpMetaInformation, GOOGLE_WELL_KNOWN_DOC};
+
+    fn check_all_values(expected_meta_data: &[&str], actual_meta_data: &[impl AsRef<str>]) -> bool {
+        for expected in expected_meta_data.iter() {
+            if !actual_meta_data
+                .iter()
+                .any(|actual| &actual.as_ref() == expected)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 
     #[test]
     fn can_read_well_known_document() {
@@ -59,29 +70,53 @@ mod tests {
             "sub",
         ];
 
-        let code_challenge_methods_supported = vec!["plain", "S256"];
+        let code_challenge_methods_supported = ["plain", "S256"];
 
+        // Fetch acutal Meta-Data of the IP from the internet
         let well_known_data = reqwest::blocking::get(GOOGLE_WELL_KNOWN_DOC)
             .expect("Could not get the well-known doc")
             .json::<IpMetaInformation>()
             .expect("Coul not turn well-known into json");
 
+        // Check that all our expected/hard-coded values align with the
+        // data from the online document
+        // TODO: Don't hard code everything, but add a cache layer
         let all_response_types_are_correct = check_all_values(
             &response_types_supported,
             &well_known_data.response_types_supported[..],
         );
         assert!(all_response_types_are_correct);
-    }
-}
 
-fn check_all_values(expected_meta_data: &[&str], actual_meta_data: &[impl AsRef<str>]) -> bool {
-    for expected in expected_meta_data.iter() {
-        if !actual_meta_data
-            .iter()
-            .any(|actual| &actual.as_ref() == expected)
-        {
-            return false;
-        }
+        let all_subject_types_are_correct = check_all_values(
+            &subject_types_supported,
+            &well_known_data.subject_types_supported[..],
+        );
+        assert!(all_subject_types_are_correct);
+
+        let all_id_token_signing_algs_are_correct = check_all_values(
+            &id_token_signing_alg_values_supported,
+            &well_known_data.id_token_signing_alg_values_supported[..],
+        );
+        assert!(all_id_token_signing_algs_are_correct);
+
+        let all_scopes_supported_are_correct =
+            check_all_values(&scopes_supported, &well_known_data.scopes_supported[..]);
+        assert!(all_scopes_supported_are_correct);
+
+        let all_token_endpoint_auth_methods_are_correct = check_all_values(
+            &token_endpoint_auth_methods_supported,
+            &well_known_data.token_endpoint_auth_methods_supported[..],
+        );
+        assert!(all_token_endpoint_auth_methods_are_correct);
+
+        let all_claims_supported_are_correct =
+            check_all_values(&claims_supported, &well_known_data.claims_supported[..]);
+        assert!(all_claims_supported_are_correct);
+
+        let all_code_challenge_methods_supported_are_correct = check_all_values(
+            &code_challenge_methods_supported,
+            &well_known_data.code_challenge_methods_supported,
+        );
+        assert!(all_code_challenge_methods_supported_are_correct);
     }
-    return true;
 }
