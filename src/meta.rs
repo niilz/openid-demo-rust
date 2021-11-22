@@ -78,8 +78,11 @@ mod tests {
             .json::<IpMetaInformation>()
             .expect("Coul not turn well-known into json");
 
-        println!("response: {:?}", well_known_data);
-
-        assert!(true);
+        for res_type in response_types_supported.iter() {
+            assert!(well_known_data
+                .response_types_supported
+                .iter()
+                .any(|rts| rts == res_type));
+        }
     }
 }
