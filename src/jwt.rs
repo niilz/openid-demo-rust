@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+const ALLOWED_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.google.com"];
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Jwt {
     pub header: String,
@@ -10,7 +12,10 @@ pub struct Jwt {
 impl Jwt {
     // Validation of the authenticity of the ID-Token
     fn validate(&self) -> bool {
-        true
+        // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
+        //    signed using one of the certificates found at the URI specified in the jwks_uri
+        //    metadata value of the Discovery document.
+        todo!("Implement signature validation")
     }
 }
 
@@ -37,7 +42,8 @@ fn get_token_parts(id_token: &str) -> Vec<String> {
     header_and_payload
 }
 
-#[derive(Deserialize, Debug)]
+// Only implements default, to make it easier to test
+#[derive(Deserialize, Debug, Default)]
 pub struct Payload {
     // ALWAYS: The audience that this ID token is intended for
     pub aud: String,
@@ -72,9 +78,26 @@ pub struct Payload {
     pub locale: String,
 }
 
+impl Payload {
+    fn validate(&self, client_id: &str) -> bool {
+        // 2. Verify the value of the iss claim in the ID token
+        if !ALLOWED_ISSUERS.contains(&self.iss.as_ref()) {
+            return false;
+        }
+        if self.aud != client_id {
+            return false;
+        }
+        // 3. Verify that the value of the aud claim in the ID token is equal to your app's client ID.
+        // 4. Verify that the expiry time (exp claim) of the ID token has not passed.
+        // 5. If you specified a hd parameter value in the request, verify that the ID token has a
+        //    hd claim that matches an accepted G Suite hosted domain.
+        todo!("Verification Steps")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::jwt::{destruct_jwt, get_token_parts, Jwt};
+    use crate::jwt::{destruct_jwt, get_token_parts, Jwt, Payload};
 
     #[test]
     fn can_get_token_parts() {
@@ -114,12 +137,20 @@ mod tests {
     }
 
     #[test]
-    fn can_validate_the_id_token() {
+    fn can_validate_the_id_token_signature() {
         let id_token = Jwt {
             header: "algo-and-stuff".to_string(),
             payload: "iss-and-stuff".to_string(),
             signature: Some("123xyz".to_string()),
         };
         assert!(id_token.validate());
+    }
+
+    #[test]
+    fn can_validate_payload_of_id_token() {
+        let mut dummy_id_token = Payload::default();
+        dummy_id_token.aud = "123456.apps.googleusercontent.com".to_string();
+        dummy_id_token.iss = "accounts.google.com".to_string();
+        dummy_id_token.validate("very-secret-client-id");
     }
 }
