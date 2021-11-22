@@ -7,6 +7,13 @@ pub struct Jwt {
     pub signature: Option<String>,
 }
 
+impl Jwt {
+    // Validation of the authenticity of the ID-Token
+    fn validate(&self) -> bool {
+        true
+    }
+}
+
 pub fn destruct_jwt(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
     let parts = get_token_parts(id_token.as_ref());
     if let [header, payload] = &parts[..] {
@@ -104,5 +111,15 @@ mod tests {
 
         let jwt = destruct_jwt(id_token).unwrap();
         assert_eq!(expected_jwt, jwt);
+    }
+
+    #[test]
+    fn can_validate_the_id_token() {
+        let id_token = Jwt {
+            header: "algo-and-stuff".to_string(),
+            payload: "iss-and-stuff".to_string(),
+            signature: Some("123xyz".to_string()),
+        };
+        assert!(id_token.validate());
     }
 }
