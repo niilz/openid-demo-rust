@@ -21,26 +21,15 @@ struct IpMetaInformation {
     code_challenge_methods_supported: Vec<String>,
 }
 
-trait InnerStringer
-where
-    Self: Sized + IntoIterator<Item = &'static str>,
-{
-    fn stringer(self) -> Vec<String> {
-        self.into_iter().map(|s| s.to_string()).collect()
-    }
-}
-
-impl InnerStringer for Vec<&'static str> {}
-
 #[cfg(test)]
 mod tests {
 
+    use crate::meta::check_all_values;
     use crate::meta::{IpMetaInformation, GOOGLE_WELL_KNOWN_DOC};
-    use serde_json::from_str;
 
     #[test]
     fn can_read_well_known_document() {
-        let response_types_supported = vec![
+        let response_types_supported = [
             "code",
             "token",
             "id_token",
@@ -50,13 +39,12 @@ mod tests {
             "code token id_token",
             "none",
         ];
-        let subject_types_supported = vec!["public"];
-        let id_token_signing_alg_values_supported = vec!["RS256"];
-        let scopes_supported = vec!["openid", "email", "profile"];
-        let token_endpoint_auth_methods_supported =
-            vec!["client_secret_post", "client_secret_basic"];
+        let subject_types_supported = ["public"];
+        let id_token_signing_alg_values_supported = ["RS256"];
+        let scopes_supported = ["openid", "email", "profile"];
+        let token_endpoint_auth_methods_supported = ["client_secret_post", "client_secret_basic"];
 
-        let claims_supported = vec![
+        let claims_supported = [
             "aud",
             "email",
             "email_verified",
@@ -78,11 +66,22 @@ mod tests {
             .json::<IpMetaInformation>()
             .expect("Coul not turn well-known into json");
 
-        for res_type in response_types_supported.iter() {
-            assert!(well_known_data
-                .response_types_supported
-                .iter()
-                .any(|rts| rts == res_type));
+        let all_response_types_are_correct = check_all_values(
+            &response_types_supported,
+            &well_known_data.response_types_supported[..],
+        );
+        assert!(all_response_types_are_correct);
+    }
+}
+
+fn check_all_values(expected_meta_data: &[&str], actual_meta_data: &[impl AsRef<str>]) -> bool {
+    for expected in expected_meta_data.iter() {
+        if !actual_meta_data
+            .iter()
+            .any(|actual| &actual.as_ref() == expected)
+        {
+            return false;
         }
     }
+    return true;
 }
