@@ -12,11 +12,12 @@ path = "./src/main.rs"
 
 [dependencies]
 tokio = { version = "1.14.0", features = ["full"] }
-reqwest = { version = "0.11.6", features = ["json"] }
+reqwest = { version = "0.11.6", features = ["json", "blocking"] }
 url = "2.2.2"
 rand = { version = "0.8.4", features = ["std", "std_rng"] }
 rocket = { version = "0.5.0-rc.1", features = ["json"] }
 base64 = "0.13.0"
 serde = { version = "1", feature = ["derive"]}
+serde_json = "1"
 # My derive macro
 to-url = {path = "../to-url"}
