@@ -4,13 +4,13 @@ const GOOGLE_WELL_KNOWN_DOC: &str = "https://accounts.google.com/.well-known/ope
 
 #[derive(Debug, Deserialize)]
 struct IpMetaInformation {
-    issuer: String,                        //"https://accounts.google.com",
-    authorization_endpoint: String,        //"https://accounts.google.com/o/oauth2/v2/auth",
-    device_authorization_endpoint: String, //"https://oauth2.googleapis.com/device/code",
-    token_endpoint: String,                //"https://oauth2.googleapis.com/token",
-    userinfo_endpoint: String,             //"https://openidconnect.googleapis.com/v1/userinfo",
-    revocation_endpoint: String,           //"https://oauth2.googleapis.com/revoke",
-    jwks_uri: String,                      //"https://www.googleapis.com/oauth2/v3/certs",
+    issuer: String,
+    authorization_endpoint: String,
+    device_authorization_endpoint: String,
+    token_endpoint: String,
+    userinfo_endpoint: String,
+    revocation_endpoint: String,
+    jwks_uri: String,
     response_types_supported: Vec<String>,
     subject_types_supported: Vec<String>,
     id_token_signing_alg_values_supported: Vec<String>,
