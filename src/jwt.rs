@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use time::OffsetDateTime;
 
 const ALLOWED_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.google.com"];
 
@@ -48,7 +49,7 @@ pub struct Payload {
     // ALWAYS: The audience that this ID token is intended for
     pub aud: String,
     // ALWAYS: Expiration time on or after which the ID token must not be accepted. Represented in Unix time (integer seconds).
-    pub exp: u32,
+    pub exp: i64,
     // ALWAYS: The time the ID token was issued. Represented in Unix time (integer seconds).
     pub iat: u32,
     // ALWAYS: The Issuer Identifier for the Issuer of the response. Always https://accounts.google.com or accounts.google.com for Google ID tokens
@@ -88,15 +89,25 @@ impl Payload {
             return false;
         }
         // 3. Verify that the value of the aud claim in the ID token is equal to your app's client ID.
+        if self.aud != client_id {
+            return false;
+        }
         // 4. Verify that the expiry time (exp claim) of the ID token has not passed.
+        if self.exp <= OffsetDateTime::now_utc().unix_timestamp() {
+            return false;
+        }
         // 5. If you specified a hd parameter value in the request, verify that the ID token has a
         //    hd claim that matches an accepted G Suite hosted domain.
-        todo!("Verification Steps")
+        true
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{ops::Add, time::Duration};
+
+    use time::OffsetDateTime;
+
     use crate::jwt::{destruct_jwt, get_token_parts, Jwt, Payload};
 
     #[test]
@@ -149,8 +160,24 @@ mod tests {
     #[test]
     fn can_validate_payload_of_id_token() {
         let mut dummy_id_token = Payload::default();
-        dummy_id_token.aud = "123456.apps.googleusercontent.com".to_string();
         dummy_id_token.iss = "accounts.google.com".to_string();
-        dummy_id_token.validate("very-secret-client-id");
+        dummy_id_token.aud = "123456.apps.googleusercontent.com".to_string();
+        dummy_id_token.exp = OffsetDateTime::now_utc()
+            .add(Duration::from_secs(1))
+            .unix_timestamp();
+        let is_valid = dummy_id_token.validate("123456.apps.googleusercontent.com");
+        assert!(is_valid);
+    }
+
+    #[test]
+    fn fails_if_aud_and_client_are_not_the_same() {
+        let mut dummy_id_token = Payload::default();
+        dummy_id_token.iss = "accounts.google.com".to_string();
+        dummy_id_token.aud = "123456.apps.googleusercontent.com".to_string();
+        dummy_id_token.exp = OffsetDateTime::now_utc()
+            .add(Duration::from_secs(1))
+            .unix_timestamp();
+        let is_valid = dummy_id_token.validate("different-id-than-aud.com");
+        assert!(!is_valid);
     }
 }
