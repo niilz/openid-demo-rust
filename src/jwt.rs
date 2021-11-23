@@ -96,8 +96,6 @@ impl Payload {
         if self.exp <= OffsetDateTime::now_utc().unix_timestamp() {
             return false;
         }
-        // 5. If you specified a hd parameter value in the request, verify that the ID token has a
-        //    hd claim that matches an accepted G Suite hosted domain.
         true
     }
 }
