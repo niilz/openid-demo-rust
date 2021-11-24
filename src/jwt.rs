@@ -178,4 +178,15 @@ mod tests {
         let is_valid = dummy_id_token.validate("different-id-than-aud.com");
         assert!(!is_valid);
     }
+
+    #[test]
+    fn fails_if_token_has_expired() {
+        let mut dummy_id_token = Payload::default();
+        dummy_id_token.iss = "accounts.google.com".to_string();
+        dummy_id_token.aud = "123456.apps.googleusercontent.com".to_string();
+        // This moment will have passed when the assertion happens
+        dummy_id_token.exp = OffsetDateTime::now_utc().unix_timestamp();
+        let is_valid = dummy_id_token.validate("123456.apps.googleusercontent.com");
+        assert!(!is_valid);
+    }
 }
