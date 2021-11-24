@@ -100,13 +100,29 @@ impl Payload {
     }
 }
 
+#[derive(Deserialize, PartialEq, Eq, Debug)]
+struct Jwks {
+    keys: Vec<Key>,
+}
+
+#[derive(Deserialize, PartialEq, Eq, Debug)]
+struct Key {
+    kty: String, // "RSA"
+    #[serde(rename = "use")]
+    usage: String, // "sig"
+    e: String,   // "AQAB"
+    kid: String, // "032b2ef3d2c2806157f8a9b9f4ef779834f85ada"
+    n: String,   // "1Zdt2akTl0LcFko5ksUyL1caOq0zHO0ijzfKV8Z9vAGA1...."
+    alg: String, // "RS256
+}
+
 #[cfg(test)]
 mod tests {
-    use std::{ops::Add, time::Duration};
-
-    use time::OffsetDateTime;
-
+    use crate::jwt::Jwks;
+    use crate::jwt::Key;
     use crate::jwt::{destruct_jwt, get_token_parts, Jwt, Payload};
+    use std::{ops::Add, time::Duration};
+    use time::OffsetDateTime;
 
     #[test]
     fn can_get_token_parts() {
@@ -188,5 +204,45 @@ mod tests {
         dummy_id_token.exp = OffsetDateTime::now_utc().unix_timestamp();
         let is_valid = dummy_id_token.validate("123456.apps.googleusercontent.com");
         assert!(!is_valid);
+    }
+
+    #[test]
+    fn can_deserialize_jwks() {
+        let serialized_key = r#"{
+            "kty": "RSA",
+            "use": "sig",
+            "e": "AQAB",
+            "kid": "032b2ef3d2c2806157f8a9b9f4ef779834f85ada",
+            "n": "1Zdt2akTl0LcFko5ksUyL1caOq0zHO0ijzfKV",
+            "alg": "RS256"
+        }"#;
+
+        let expected_key = Key {
+            kty: "RSA".to_string(),
+            usage: "sig".to_string(),
+            e: "AQAB".to_string(),
+            kid: "032b2ef3d2c2806157f8a9b9f4ef779834f85ada".to_string(),
+            n: "1Zdt2akTl0LcFko5ksUyL1caOq0zHO0ijzfKV".to_string(),
+            alg: "RS256".to_string(),
+        };
+
+        let deserialized_key: Key = serde_json::from_str(serialized_key).unwrap();
+        assert_eq!(expected_key, deserialized_key);
+
+        let serialized_jwks = format!(
+            r#"{{
+            "keys": [
+                {}
+            ]
+        }}"#,
+            serialized_key
+        );
+
+        let deserialized_jwks = serde_json::from_str(&serialized_jwks).unwrap();
+
+        let expected_jwks = Jwks {
+            keys: vec![expected_key],
+        };
+        assert_eq!(expected_jwks, deserialized_jwks);
     }
 }
