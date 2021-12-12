@@ -266,13 +266,21 @@ mod tests {
         assert_eq!(expected_jwks, deserialized_jwks);
     }
 
+    impl Jwt {
+        fn as_base64(&self) -> serde_json::Result<String> {
+            let head_base64 = base64::encode(serde_json::to_string(&self.header)?);
+            let payload_base64 = base64::encode(serde_json::to_string(&self.payload)?);
+            Ok(format!("{}.{}", head_base64, payload_base64))
+        }
+    }
+
     use ring::{rand, signature::RsaKeyPair};
     use std::fs;
     fn sign_jwt(jwt: Jwt) -> serde_json::Result<Vec<u8>> {
         let alg = jwt.header.alg.clone();
-        let head_base64 = base64::encode(serde_json::to_string(&jwt.header)?);
-        let payload_base64 = base64::encode(serde_json::to_string(&jwt.payload)?);
-        let jwt_base64 = format!("{}.{}", head_base64, payload_base64);
+        let jwt_base64 = jwt.as_base64()?;
+
+        println!("1. sign_jwt.jwt_base64: {}", jwt_base64);
 
         // Load private-test-key (created with openssl) from filesystem
         let private_key =
@@ -295,7 +303,8 @@ mod tests {
     }
 
     #[test]
-    fn can_validate_the_id_token_signature() {
+    fn can_validate_the_id_token_signature() -> serde_json::Result<()> {
+        // Construct dummy-JWT
         let header = get_test_header();
         let payload = get_test_payload();
         let jwt = Jwt {
@@ -303,9 +312,39 @@ mod tests {
             payload,
             signature: Some("123xyz".to_string()),
         };
-        let signed_jwt = sign_jwt(jwt.clone());
+        // Sign JWT with test-private-key
+        let signed_jwt = sign_jwt(jwt.clone())?;
 
-        let is_valid = jwt.validate();
-        assert!(is_valid);
+        // Read test-public-key from filesystem
+        let public_key = fs::read("test-public-key.der").expect("Could not read public key");
+        // Create Public-Key struct
+        let public_key =
+            signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA512, public_key);
+
+        let jwt_base64 = jwt
+            .as_base64()
+            .expect("Could not transform JWT into base64");
+
+        /*
+        println!("jwt____: {}", jwt_base64);
+        */
+        println!("signed_jwt: {:?}", signed_jwt);
+
+        //let signature_str = String::from_utf8_lossy(&signed_jwt);
+        //let jwt_base64_with_sig = format!("{}.{}", jwt_base64.to_string(), signature_str);
+
+        //println!("signed_jwt_with_signature: {}", jwt_base64_with_sig);
+
+        match public_key.verify(&jwt_base64.as_bytes(), &signed_jwt) {
+            Err(key_rej) => println!("Rej: {}", key_rej.to_string()),
+            _ => (),
+        }
+
+        //.expect("Could not verify the the JWT");
+
+        //let is_valid = jwt.validate();
+        //assert!(is_valid);
+
+        Ok(())
     }
 }
