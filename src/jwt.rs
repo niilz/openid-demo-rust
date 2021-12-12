@@ -3,7 +3,7 @@ use time::OffsetDateTime;
 
 const ALLOWED_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.google.com"];
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Jwt {
     pub header: Header,
     pub payload: Payload,
@@ -43,7 +43,7 @@ fn get_token_parts(id_token: &str) -> Vec<String> {
     header_and_payload
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default, Clone)]
 pub struct Header {
     alg: String, // "RS256"
     kid: String, // "c1892eb49d7ef9adf8b2e14c05ca0d032714a237",
@@ -51,7 +51,7 @@ pub struct Header {
 }
 
 // Only implements default, to make it easier to test
-#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct Payload {
     // ALWAYS: The audience that this ID token is intended for
     pub aud: String,
@@ -268,7 +268,7 @@ mod tests {
 
     use ring::{rand, signature::RsaKeyPair};
     use std::fs;
-    fn sign_jwt(jwt: Jwt) -> serde_json::Result<String> {
+    fn sign_jwt(jwt: Jwt) -> serde_json::Result<Vec<u8>> {
         let alg = jwt.header.alg.clone();
         let head_base64 = base64::encode(serde_json::to_string(&jwt.header)?);
         let payload_base64 = base64::encode(serde_json::to_string(&jwt.payload)?);
@@ -281,6 +281,7 @@ mod tests {
         let rsa_key_pair = RsaKeyPair::from_pkcs8(&private_key).expect("Could not create key-pair");
         let rand = rand::SystemRandom::new();
         let mut signature = vec![0; rsa_key_pair.public_modulus_len()];
+        // Sign the JWT (into the signature buffer ^)
         rsa_key_pair
             .sign(
                 &signature::RSA_PKCS1_SHA256,
@@ -289,8 +290,8 @@ mod tests {
                 &mut signature,
             )
             .expect("Could not sign the JWT");
-        println!("Signed Key: {:?}", signature);
-        todo!();
+
+        Ok(signature)
     }
 
     #[test]
@@ -302,7 +303,9 @@ mod tests {
             payload,
             signature: Some("123xyz".to_string()),
         };
-        let signed_jwt = sign_jwt(jwt);
-        //assert!(jwt.validate());
+        let signed_jwt = sign_jwt(jwt.clone());
+
+        let is_valid = jwt.validate();
+        assert!(is_valid);
     }
 }
