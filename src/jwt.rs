@@ -191,18 +191,6 @@ mod tests {
     }
 
     #[test]
-    fn can_validate_the_id_token_signature() {
-        let header = get_test_header();
-        let payload = get_test_payload();
-        let id_token = Jwt {
-            header,
-            payload,
-            signature: Some("123xyz".to_string()),
-        };
-        assert!(id_token.validate());
-    }
-
-    #[test]
     fn can_validate_payload_of_id_token() {
         let mut dummy_id_token = Payload::default();
         dummy_id_token.iss = "accounts.google.com".to_string();
@@ -275,5 +263,17 @@ mod tests {
             keys: vec![expected_key],
         };
         assert_eq!(expected_jwks, deserialized_jwks);
+    }
+
+    #[test]
+    fn can_validate_the_id_token_signature() {
+        let header = get_test_header();
+        let payload = get_test_payload();
+        let id_token = Jwt {
+            header,
+            payload,
+            signature: Some("123xyz".to_string()),
+        };
+        assert!(id_token.validate());
     }
 }
