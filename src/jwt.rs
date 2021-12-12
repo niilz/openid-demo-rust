@@ -1,12 +1,12 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 const ALLOWED_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.google.com"];
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Jwt {
-    pub header: String,
-    pub payload: String,
+    pub header: Header,
+    pub payload: Payload,
     pub signature: Option<String>,
 }
 
@@ -24,8 +24,8 @@ pub fn destruct_jwt(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
     let parts = get_token_parts(id_token.as_ref());
     if let [header, payload] = &parts[..] {
         return Ok(Jwt {
-            header: header.to_string(),
-            payload: payload.to_string(),
+            header: serde_json::from_str(header).unwrap(),
+            payload: serde_json::from_str(payload).unwrap(),
             // TODO: Decrypt-Signature
             signature: None,
         });
@@ -43,8 +43,15 @@ fn get_token_parts(id_token: &str) -> Vec<String> {
     header_and_payload
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default)]
+pub struct Header {
+    alg: String, // "RS256"
+    kid: String, // "c1892eb49d7ef9adf8b2e14c05ca0d032714a237",
+    typ: String, // "JWT"
+}
+
 // Only implements default, to make it easier to test
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
 pub struct Payload {
     // ALWAYS: The audience that this ID token is intended for
     pub aud: String,
@@ -118,11 +125,28 @@ struct Key {
 
 #[cfg(test)]
 mod tests {
+    use crate::jwt::Header;
     use crate::jwt::Jwks;
     use crate::jwt::Key;
     use crate::jwt::{destruct_jwt, get_token_parts, Jwt, Payload};
     use std::{ops::Add, time::Duration};
     use time::OffsetDateTime;
+
+    fn get_test_header() -> Header {
+        Header {
+            alg: "RS256".to_string(),
+            kid: "some-code-123".to_string(),
+            typ: "JWT".to_string(),
+        }
+    }
+
+    fn get_test_payload() -> Payload {
+        // minimal Payload
+        let mut payload = Payload::default();
+        payload.iss = "the-iss".to_string();
+        payload.aud = "the-client-id".to_string();
+        payload
+    }
 
     #[test]
     fn can_get_token_parts() {
@@ -140,32 +164,39 @@ mod tests {
     }
 
     #[test]
-    fn can_destructure_jwt() {
-        let header = "header-stuff-algo-256";
-        let payload = "payload-12345-claims";
-        let signature = "ignored";
+    fn can_destructure_jwt() -> serde_json::Result<()> {
+        let header = get_test_header();
+        let payload = get_test_payload();
+        let signature = "ignored".to_string();
 
-        let id_token = [header, payload, signature]
-            .iter()
-            .map(|part| base64::encode(part))
-            .collect::<Vec<String>>()
-            .join(".");
+        let id_token = [
+            serde_json::to_string(&header)?,
+            serde_json::to_string(&payload)?,
+            signature,
+        ]
+        .iter()
+        .map(|part| base64::encode(part))
+        .collect::<Vec<String>>()
+        .join(".");
 
         let expected_jwt = Jwt {
-            header: "header-stuff-algo-256".to_string(),
-            payload: "payload-12345-claims".to_string(),
+            header,
+            payload,
             signature: None,
         };
 
         let jwt = destruct_jwt(id_token).unwrap();
         assert_eq!(expected_jwt, jwt);
+        Ok(())
     }
 
     #[test]
     fn can_validate_the_id_token_signature() {
+        let header = get_test_header();
+        let payload = get_test_payload();
         let id_token = Jwt {
-            header: "algo-and-stuff".to_string(),
-            payload: "iss-and-stuff".to_string(),
+            header,
+            payload,
             signature: Some("123xyz".to_string()),
         };
         assert!(id_token.validate());
