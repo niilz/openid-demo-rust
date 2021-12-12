@@ -129,6 +129,7 @@ mod tests {
     use crate::jwt::Jwks;
     use crate::jwt::Key;
     use crate::jwt::{destruct_jwt, get_token_parts, Jwt, Payload};
+    use ring::signature;
     use std::{ops::Add, time::Duration};
     use time::OffsetDateTime;
 
@@ -265,15 +266,43 @@ mod tests {
         assert_eq!(expected_jwks, deserialized_jwks);
     }
 
+    use ring::{rand, signature::RsaKeyPair};
+    use std::fs;
+    fn sign_jwt(jwt: Jwt) -> serde_json::Result<String> {
+        let alg = jwt.header.alg.clone();
+        let head_base64 = base64::encode(serde_json::to_string(&jwt.header)?);
+        let payload_base64 = base64::encode(serde_json::to_string(&jwt.payload)?);
+        let jwt_base64 = format!("{}.{}", head_base64, payload_base64);
+
+        // Load private-test-key (created with openssl) from filesystem
+        let private_key =
+            fs::read("test-private-keypair-for-signature.pk8").expect("Could not read the keyfile");
+        // Construct ring-KeyPair
+        let rsa_key_pair = RsaKeyPair::from_pkcs8(&private_key).expect("Could not create key-pair");
+        let rand = rand::SystemRandom::new();
+        let mut signature = vec![0; rsa_key_pair.public_modulus_len()];
+        rsa_key_pair
+            .sign(
+                &signature::RSA_PKCS1_SHA256,
+                &rand,
+                jwt_base64.as_bytes(),
+                &mut signature,
+            )
+            .expect("Could not sign the JWT");
+        println!("Signed Key: {:?}", signature);
+        todo!();
+    }
+
     #[test]
     fn can_validate_the_id_token_signature() {
         let header = get_test_header();
         let payload = get_test_payload();
-        let id_token = Jwt {
+        let jwt = Jwt {
             header,
             payload,
             signature: Some("123xyz".to_string()),
         };
-        assert!(id_token.validate());
+        let signed_jwt = sign_jwt(jwt);
+        //assert!(jwt.validate());
     }
 }
