@@ -268,8 +268,10 @@ mod tests {
 
     impl Jwt {
         fn as_base64(&self) -> serde_json::Result<String> {
-            let head_base64 = base64::encode(serde_json::to_string(&self.header)?);
-            let payload_base64 = base64::encode(serde_json::to_string(&self.payload)?);
+            let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
+            let head_base64 = base64::encode_config(serde_json::to_string(&self.header)?, config);
+            let payload_base64 =
+                base64::encode_config(serde_json::to_string(&self.payload)?, config);
             Ok(format!("{}.{}", head_base64, payload_base64))
         }
     }
@@ -330,10 +332,12 @@ mod tests {
         */
         println!("signed_jwt: {:?}", signed_jwt);
 
-        //let signature_str = String::from_utf8_lossy(&signed_jwt);
-        //let jwt_base64_with_sig = format!("{}.{}", jwt_base64.to_string(), signature_str);
+        let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
+        let signature_base_64 = base64::encode_config(&jwt_base64, config);
+        println!("signature_base_64: {:?}", signature_base_64);
 
-        //println!("signed_jwt_with_signature: {}", jwt_base64_with_sig);
+        let jwt_base64_with_sig = format!("{}.{}", jwt_base64.to_string(), signature_base_64);
+        println!("signed_jwt_with_signature: {}", jwt_base64_with_sig);
 
         match public_key.verify(&jwt_base64.as_bytes(), &signed_jwt) {
             Err(key_rej) => println!("Rej: {}", key_rej.to_string()),
