@@ -282,13 +282,10 @@ mod tests {
         let alg = jwt.header.alg.clone();
         let jwt_base64 = jwt.as_base64()?;
 
-        println!("1. sign_jwt.jwt_base64: {}", jwt_base64);
-
         // Load private-test-key (created with openssl) from filesystem
-        let private_key =
-            fs::read("test-private-keypair-for-signature.pk8").expect("Could not read the keyfile");
+        let private_key = fs::read("test-private-key.der").expect("Could not read the keyfile");
         // Construct ring-KeyPair
-        let rsa_key_pair = RsaKeyPair::from_pkcs8(&private_key).expect("Could not create key-pair");
+        let rsa_key_pair = RsaKeyPair::from_der(&private_key).expect("Could not create key-pair");
         let rand = rand::SystemRandom::new();
         let mut signature = vec![0; rsa_key_pair.public_modulus_len()];
         // Sign the JWT (into the signature buffer ^)
@@ -296,7 +293,8 @@ mod tests {
             .sign(
                 &signature::RSA_PKCS1_SHA256,
                 &rand,
-                jwt_base64.as_bytes(),
+                //jwt_base64.as_bytes(),
+                b"Hello World",
                 &mut signature,
             )
             .expect("Could not sign the JWT");
@@ -321,30 +319,27 @@ mod tests {
         let public_key = fs::read("test-public-key.der").expect("Could not read public key");
         // Create Public-Key struct
         let public_key =
-            signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA512, public_key);
+            signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA256, public_key);
 
+        // Construct base_64(header).base_64(palyload), the text-result which is used in the
+        // verification step
         let jwt_base64 = jwt
             .as_base64()
             .expect("Could not transform JWT into base64");
 
-        /*
-        println!("jwt____: {}", jwt_base64);
-        */
-        println!("signed_jwt: {:?}", signed_jwt);
-
         let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let signature_base_64 = base64::encode_config(&jwt_base64, config);
         println!("signature_base_64: {:?}", signature_base_64);
+        println!();
 
-        let jwt_base64_with_sig = format!("{}.{}", jwt_base64.to_string(), signature_base_64);
+        let jwt_base64_with_sig = format!("{}.{}", jwt_base64, signature_base_64);
+        println!();
         println!("signed_jwt_with_signature: {}", jwt_base64_with_sig);
 
-        match public_key.verify(&jwt_base64.as_bytes(), &signed_jwt) {
-            Err(key_rej) => println!("Rej: {}", key_rej.to_string()),
-            _ => (),
-        }
-
-        //.expect("Could not verify the the JWT");
+        public_key
+            //.verify(&jwt_base64.as_bytes(), &signed_jwt)
+            .verify(b"Hello World", &signed_jwt)
+            .expect("Could not verify the the JWT");
 
         //let is_valid = jwt.validate();
         //assert!(is_valid);
