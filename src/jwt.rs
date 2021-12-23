@@ -1,4 +1,5 @@
 #![allow(unused_variables)]
+use ring::signature;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -15,11 +16,37 @@ pub struct Jwt {
 #[allow(dead_code)]
 impl Jwt {
     // Validation of the authenticity of the ID-Token
-    fn _validate(&self) -> bool {
+    fn validate(&self, public_key: Vec<u8>) -> bool {
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
         //    signed using one of the certificates found at the URI specified in the jwks_uri
         //    metadata value of the Discovery document.
-        todo!("Implement signature validation")
+        let signature_bytes =
+            base64::decode(self.signature.as_ref().unwrap()).expect("Could not decode signature");
+
+        // Get base64(header).base64(paload)
+        let header_and_payload_base64 = self
+            .header_and_payload_base64()
+            .expect("Could not transform header and payload to base64");
+
+        // Create Public-Key struct from key-bytes
+        let public_key =
+            signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA256, public_key);
+
+        // Check that the signature matches the base64_enoced header.payload
+        match public_key.verify(&header_and_payload_base64.as_bytes(), &signature_bytes) {
+            Ok(()) => true,
+            Err(e) => {
+                eprintln!("The signature does not match the token");
+                false
+            }
+        }
+    }
+
+    fn header_and_payload_base64(&self) -> serde_json::Result<String> {
+        let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
+        let head_base64 = base64::encode_config(serde_json::to_string(&self.header)?, config);
+        let payload_base64 = base64::encode_config(serde_json::to_string(&self.payload)?, config);
+        Ok(format!("{}.{}", head_base64, payload_base64))
     }
 }
 
@@ -271,82 +298,61 @@ mod tests {
         assert_eq!(expected_jwks, deserialized_jwks);
     }
 
+    // Impl just for tests
     impl Jwt {
-        fn as_base64(&self) -> serde_json::Result<String> {
-            let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
-            let head_base64 = base64::encode_config(serde_json::to_string(&self.header)?, config);
-            let payload_base64 =
-                base64::encode_config(serde_json::to_string(&self.payload)?, config);
-            Ok(format!("{}.{}", head_base64, payload_base64))
+        fn sign_jwt(&mut self, private_key: Vec<u8>) -> serde_json::Result<()> {
+            let alg = self.header.alg.clone();
+            let jwt_base64 = self.header_and_payload_base64()?;
+
+            // Construct ring-KeyPair
+            let rsa_key_pair =
+                RsaKeyPair::from_der(&private_key).expect("Could not create key-pair");
+            let rand = rand::SystemRandom::new();
+            let mut signature = vec![0; rsa_key_pair.public_modulus_len()];
+            // Sign the JWT (into the signature buffer ^)
+            rsa_key_pair
+                .sign(
+                    &signature::RSA_PKCS1_SHA256,
+                    &rand,
+                    jwt_base64.as_bytes(),
+                    &mut signature,
+                )
+                .expect("Could not sign the JWT");
+
+            let signature_base_64 = base64::encode(signature);
+            self.signature = Some(signature_base_64);
+
+            Ok(())
         }
     }
 
     use ring::{rand, signature::RsaKeyPair};
     use std::fs;
-    fn sign_jwt(jwt: Jwt) -> serde_json::Result<Vec<u8>> {
-        let alg = jwt.header.alg.clone();
-        let jwt_base64 = jwt.as_base64()?;
-
-        // Load private-test-key (created with openssl) from filesystem
-        let private_key = fs::read("test-private-key.der").expect("Could not read the keyfile");
-        // Construct ring-KeyPair
-        let rsa_key_pair = RsaKeyPair::from_der(&private_key).expect("Could not create key-pair");
-        let rand = rand::SystemRandom::new();
-        let mut signature = vec![0; rsa_key_pair.public_modulus_len()];
-        // Sign the JWT (into the signature buffer ^)
-        rsa_key_pair
-            .sign(
-                &signature::RSA_PKCS1_SHA256,
-                &rand,
-                jwt_base64.as_bytes(),
-                &mut signature,
-            )
-            .expect("Could not sign the JWT");
-
-        Ok(signature)
-    }
 
     #[test]
-    fn can_validate_the_id_token_signature() -> serde_json::Result<()> {
+    fn can_validate_the_id_token_signature() {
         // Construct dummy-JWT
         let header = get_test_header();
         let payload = get_test_payload();
-        let jwt = Jwt {
+        let mut jwt = Jwt {
             header,
             payload,
-            signature: Some("123xyz".to_string()),
+            signature: None,
         };
-        // Sign JWT with test-private-key
-        let signed_jwt = sign_jwt(jwt.clone())?;
+        // Load private-test-key (created with openssl) from filesystem
+        let private_key = fs::read("test-private-key.der").expect("Could not read the keyfile");
+
+        // Sign the dummy-JWT with test-private-key
+        let jwt_with_signature = jwt
+            .sign_jwt(private_key)
+            .expect("Could not sign the Dummy-JWT");
 
         // Read test-public-key from filesystem
         let public_key = fs::read("test-public-key.der").expect("Could not read public key");
-        // Create Public-Key struct
-        let public_key =
-            signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA256, public_key);
 
-        // Construct base_64(header).base_64(palyload), the text-result which is used in the
-        // verification step
-        let jwt_base64 = jwt
-            .as_base64()
-            .expect("Could not transform JWT into base64");
+        // validate the JWT
+        let is_valid = jwt.validate(public_key);
 
-        let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
-        let signature_base_64 = base64::encode_config(&jwt_base64, config);
-        //println!("signature_base_64: {:?}", signature_base_64);
-        //println!();
-
-        let jwt_base64_with_sig = format!("{}.{}", jwt_base64, signature_base_64);
-        //println!();
-        //println!("signed_jwt_with_signature: {}", jwt_base64_with_sig);
-
-        public_key
-            .verify(&jwt_base64.as_bytes(), &signed_jwt)
-            .expect("Could not verify the the JWT");
-
-        //let is_valid = jwt.validate();
-        //assert!(is_valid);
-
-        Ok(())
+        assert!(is_valid);
     }
 }
