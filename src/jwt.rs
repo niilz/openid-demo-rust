@@ -293,8 +293,7 @@ mod tests {
             .sign(
                 &signature::RSA_PKCS1_SHA256,
                 &rand,
-                //jwt_base64.as_bytes(),
-                b"Hello World",
+                jwt_base64.as_bytes(),
                 &mut signature,
             )
             .expect("Could not sign the JWT");
@@ -329,16 +328,15 @@ mod tests {
 
         let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let signature_base_64 = base64::encode_config(&jwt_base64, config);
-        println!("signature_base_64: {:?}", signature_base_64);
-        println!();
+        //println!("signature_base_64: {:?}", signature_base_64);
+        //println!();
 
         let jwt_base64_with_sig = format!("{}.{}", jwt_base64, signature_base_64);
-        println!();
-        println!("signed_jwt_with_signature: {}", jwt_base64_with_sig);
+        //println!();
+        //println!("signed_jwt_with_signature: {}", jwt_base64_with_sig);
 
         public_key
-            //.verify(&jwt_base64.as_bytes(), &signed_jwt)
-            .verify(b"Hello World", &signed_jwt)
+            .verify(&jwt_base64.as_bytes(), &signed_jwt)
             .expect("Could not verify the the JWT");
 
         //let is_valid = jwt.validate();
