@@ -87,12 +87,9 @@ impl User<Conserved> {
 
 #[cfg(test)]
 mod tests {
-    use std::marker::PhantomData;
-
-    use crate::service::user::Conserved;
-
     use super::InMemoryUserRepository;
     use super::User;
+    use std::marker::PhantomData;
 
     #[test]
     fn can_add_user_to_repo() {

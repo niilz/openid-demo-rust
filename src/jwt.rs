@@ -1,6 +1,8 @@
+#![allow(unused_variables)]
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+#[allow(dead_code)]
 const ALLOWED_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.google.com"];
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -10,9 +12,10 @@ pub struct Jwt {
     pub signature: Option<String>,
 }
 
+#[allow(dead_code)]
 impl Jwt {
     // Validation of the authenticity of the ID-Token
-    fn validate(&self) -> bool {
+    fn _validate(&self) -> bool {
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
         //    signed using one of the certificates found at the URI specified in the jwks_uri
         //    metadata value of the Discovery document.
@@ -86,6 +89,7 @@ pub struct Payload {
     pub locale: String,
 }
 
+#[allow(dead_code)]
 impl Payload {
     fn validate(&self, client_id: &str) -> bool {
         // 2. Verify the value of the iss claim in the ID token
@@ -125,6 +129,7 @@ struct Key {
 
 #[cfg(test)]
 mod tests {
+
     use crate::jwt::Header;
     use crate::jwt::Jwks;
     use crate::jwt::Key;

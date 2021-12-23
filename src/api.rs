@@ -1,6 +1,6 @@
 use crate::{
     credentials::Credentials,
-    jwt::{destruct_jwt, Payload},
+    jwt::destruct_jwt,
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
     service::user::{Conserved, InMemoryUserRepository, User},
@@ -96,7 +96,7 @@ pub async fn handle_success(
     // If User is new register the user by saving it into the repository
     // Otherwise get the user from the repository
     let mut repo = user_repo.lock().unwrap();
-    let user = session_user(&mut repo, payload.name);
+    let _user = session_user(&mut repo, payload.name);
     drop(repo);
 
     // TODO:

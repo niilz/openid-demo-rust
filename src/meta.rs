@@ -1,10 +1,13 @@
+#![allow(unused_variables)]
 use serde::Deserialize;
 
+#[allow(dead_code)]
 const GOOGLE_WELL_KNOWN_DOC: &str = "https://accounts.google.com/.well-known/openid-configuration";
 
 // TODO: Construct it with default values at compile time
 //       Or init it on startup and cache it
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct IpMetaInformation {
     issuer: String,
     authorization_endpoint: String,
