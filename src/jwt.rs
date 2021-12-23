@@ -13,8 +13,10 @@ pub struct Jwt {
     pub signature: Option<String>,
 }
 
-#[allow(dead_code)]
 impl Jwt {
+    // NOTE: It is maybe not smart to first contruct the JWT into an struct
+    //      just tho then reparse all its pieces into base64 encoded elements again...
+
     // Validation of the authenticity of the ID-Token
     fn validate(&self, public_key: Vec<u8>) -> bool {
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
