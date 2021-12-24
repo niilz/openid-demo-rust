@@ -1,8 +1,7 @@
 use crate::{
     credentials::Credentials,
-    jwt::destruct_jwt,
-    meta::get_ip_meta_information,
-    meta::{IpMetaInformation, GOOGLE_WELL_KNOWN_DOC},
+    jwt,
+    meta,
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
     service::user::{Conserved, InMemoryUserRepository, User},
@@ -90,10 +89,20 @@ pub async fn handle_success(
 
     // Step: 3 (Obtain user-data/claims)
     // Decode the identity-token to obtain user-information
-    let jwt = destruct_jwt(&id_token).unwrap();
-    // a. Get public Key
-    let ip_meta_info = meta::get_ip_meta_information();
-    // b. validate id-token-jwt with public key
+    let jwt = jwt::destruct(&id_token).unwrap();
+
+    // a. Get met_info form well_known_document
+    let ip_meta_info = match meta::get_ip_meta_information().await {
+        Ok(meta_info) => meta_info,
+        Err(msg) => return Err(msg),
+    };
+
+    // b. get key from jwks-endpoint
+    let jwks = ip_meta_info.get_jwks().await;
+
+    println!("Keys: {:?}", jwks);
+
+    // c. validate id-token-jwt with public key
     let payload = jwt.payload;
 
     // Step: 4

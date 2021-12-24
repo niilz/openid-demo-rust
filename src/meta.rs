@@ -1,3 +1,4 @@
+use crate::jwt::{Jwks, Key};
 use serde::Deserialize;
 
 pub const GOOGLE_WELL_KNOWN_DOC: &str =
@@ -21,6 +22,18 @@ pub struct IpMetaInformation {
     token_endpoint_auth_methods_supported: Vec<String>,
     claims_supported: Vec<String>,
     code_challenge_methods_supported: Vec<String>,
+}
+
+impl IpMetaInformation {
+    pub async fn get_jwks(&self) -> Result<Vec<Key>, &'static str> {
+        match reqwest::get(&self.jwks_uri).await {
+            Ok(jwks_res) => match jwks_res.json::<Jwks>().await {
+                Ok(jwks) => Ok(jwks.keys),
+                Err(_) => Err("Could not transform well_known_information into IpMetaInformation"),
+            },
+            Err(_) => Err("Could not retrieve IP-Meta-Data from well_known document"),
+        }
+    }
 }
 
 pub async fn get_ip_meta_information() -> Result<IpMetaInformation, &'static str> {

@@ -52,7 +52,7 @@ impl Jwt {
     }
 }
 
-pub fn destruct_jwt(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
+pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
     let parts = get_token_parts(id_token.as_ref());
     if let [header, payload] = &parts[..] {
         return Ok(Jwt {
@@ -141,19 +141,19 @@ impl Payload {
 }
 
 #[derive(Deserialize, PartialEq, Eq, Debug)]
-struct Jwks {
-    keys: Vec<Key>,
+pub struct Jwks {
+    pub keys: Vec<Key>,
 }
 
 #[derive(Deserialize, PartialEq, Eq, Debug)]
-struct Key {
-    kty: String, // "RSA"
+pub struct Key {
+    pub kty: String, // "RSA"
     #[serde(rename = "use")]
-    usage: String, // "sig"
-    e: String,   // "AQAB"
-    kid: String, // "032b2ef3d2c2806157f8a9b9f4ef779834f85ada"
-    n: String,   // "1Zdt2akTl0LcFko5ksUyL1caOq0zHO0ijzfKV8Z9vAGA1...."
-    alg: String, // "RS256
+    pub usage: String, // "sig"
+    pub e: String,   // "AQAB"
+    pub kid: String, // "032b2ef3d2c2806157f8a9b9f4ef779834f85ada"
+    pub n: String,   // "1Zdt2akTl0LcFko5ksUyL1caOq0zHO0ijzfKV8Z9vAGA1...."
+    pub alg: String, // "RS256
 }
 
 #[cfg(test)]
@@ -162,7 +162,7 @@ mod tests {
     use crate::jwt::Header;
     use crate::jwt::Jwks;
     use crate::jwt::Key;
-    use crate::jwt::{destruct_jwt, get_token_parts, Jwt, Payload};
+    use crate::jwt::{destruct, get_token_parts, Jwt, Payload};
     use ring::signature;
     use std::{ops::Add, time::Duration};
     use time::OffsetDateTime;
@@ -220,7 +220,7 @@ mod tests {
             signature: None,
         };
 
-        let jwt = destruct_jwt(id_token).unwrap();
+        let jwt = destruct(id_token).unwrap();
         assert_eq!(expected_jwt, jwt);
         Ok(())
     }
