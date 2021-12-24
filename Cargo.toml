@@ -21,5 +21,6 @@ serde = { version = "1", features = ["derive"]}
 serde_json = "1"
 time = {version = "0.3.5", features = ["serde"] }
 ring = "0.16.20"
+simple_asn1 = "0.6.1"
 # My derive macro
 to-url = {path = "../to-url"}
