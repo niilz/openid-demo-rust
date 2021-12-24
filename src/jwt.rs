@@ -14,7 +14,7 @@ pub struct Jwt {
 }
 
 impl Jwt {
-    // NOTE: It is maybe not smart to first contruct the JWT into an struct
+    // NOTE: It is maybe not smart to first construct the JWT into an struct
     //      just tho then reparse all its pieces into base64 encoded elements again...
 
     // Validation of the authenticity of the ID-Token
