@@ -1,6 +1,8 @@
 use crate::{
     credentials::Credentials,
     jwt::destruct_jwt,
+    meta::get_ip_meta_information,
+    meta::{IpMetaInformation, GOOGLE_WELL_KNOWN_DOC},
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
     service::user::{Conserved, InMemoryUserRepository, User},
@@ -10,7 +12,7 @@ use serde_json::json;
 use std::fmt::Debug;
 use std::sync::Mutex;
 
-const AUTH_CODE_URL: &'static str = "https://accounts.google.com/o/oauth2/v2/auth?";
+const AUTH_CODE_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth?";
 const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
 
 #[derive(Default, Debug)]
@@ -74,12 +76,12 @@ pub async fn handle_success(
     local_state: &State<CurrentState>,
     credentials: &State<Credentials>,
     user_repo: &State<Mutex<InMemoryUserRepository>>,
-) -> Value {
+) -> Result<Value, &'static str> {
     // Step: 2 (Token Request)
 
     // First: Check that state-nounce is the once we sent in step 1
     if !local_state.cmp_inner_with(state) {
-        return json!({"Error": "Cross-Site-Request-Forgery is not cool!"});
+        return Err("Cross-Site-Request-Forgery is not cool!");
     }
     // Second: Ask for access- and id-token, by providing the authorization-
     // code we retrieved from the query-parameters (perfomed as a POST-request)
@@ -89,8 +91,10 @@ pub async fn handle_success(
     // Step: 3 (Obtain user-data/claims)
     // Decode the identity-token to obtain user-information
     let jwt = destruct_jwt(&id_token).unwrap();
+    // a. Get public Key
+    let ip_meta_info = meta::get_ip_meta_information();
+    // b. validate id-token-jwt with public key
     let payload = jwt.payload;
-    //  Optional TODO: validate token-authenticity with signature
 
     // Step: 4
     // If User is new register the user by saving it into the repository
@@ -102,7 +106,7 @@ pub async fn handle_success(
     // TODO:
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
-    json!("TODO")
+    Ok(json!("TODO"))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {

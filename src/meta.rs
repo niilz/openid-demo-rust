@@ -1,14 +1,12 @@
-#![allow(unused_variables)]
 use serde::Deserialize;
 
-#[allow(dead_code)]
-const GOOGLE_WELL_KNOWN_DOC: &str = "https://accounts.google.com/.well-known/openid-configuration";
+pub const GOOGLE_WELL_KNOWN_DOC: &str =
+    "https://accounts.google.com/.well-known/openid-configuration";
 
 // TODO: Construct it with default values at compile time
 //       Or init it on startup and cache it
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-struct IpMetaInformation {
+pub struct IpMetaInformation {
     issuer: String,
     authorization_endpoint: String,
     device_authorization_endpoint: String,
@@ -23,6 +21,16 @@ struct IpMetaInformation {
     token_endpoint_auth_methods_supported: Vec<String>,
     claims_supported: Vec<String>,
     code_challenge_methods_supported: Vec<String>,
+}
+
+pub async fn get_ip_meta_information() -> Result<IpMetaInformation, &'static str> {
+    match reqwest::get(GOOGLE_WELL_KNOWN_DOC).await {
+        Ok(well_known_res) => match well_known_res.json::<IpMetaInformation>().await {
+            Ok(ip_meta_info) => Ok(ip_meta_info),
+            Err(_) => Err("Could not transform well_known_information into IpMetaInformation"),
+        },
+        Err(_) => Err("Could not retrieve IP-Meta-Data from well_known document"),
+    }
 }
 
 #[cfg(test)]
