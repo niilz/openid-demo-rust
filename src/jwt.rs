@@ -18,7 +18,7 @@ impl Jwt {
     //      just tho then reparse all its pieces into base64 encoded elements again...
 
     // Validation of the authenticity of the ID-Token
-    fn validate(&self, public_key: Vec<u8>) -> bool {
+    pub fn validate(&self, public_key: Vec<u8>) -> bool {
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
         //    signed using one of the certificates found at the URI specified in the jwks_uri
         //    metadata value of the Discovery document.

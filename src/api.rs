@@ -1,7 +1,6 @@
 use crate::{
     credentials::Credentials,
-    jwt,
-    meta,
+    jwt, meta,
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
     service::user::{Conserved, InMemoryUserRepository, User},
@@ -98,11 +97,16 @@ pub async fn handle_success(
     };
 
     // b. get key from jwks-endpoint
-    let jwks = ip_meta_info.get_jwks().await;
+    let jwks = ip_meta_info.get_jwks().await?;
 
-    println!("Keys: {:?}", jwks);
+    // c. get public_key and decode its base64-representation
+    let public_key_base64 = &jwks.get(0).unwrap().n;
+    let public_key_bytes =
+        base64::decode(public_key_base64).map_err(|_| "Could not base64-decode the public key")?;
 
-    // c. validate id-token-jwt with public key
+    // d. validate id-token-jwt with public key
+    jwt.validate(public_key_bytes);
+
     let payload = jwt.payload;
 
     // Step: 4
