@@ -100,11 +100,20 @@ pub async fn handle_success(
     let jwks = ip_meta_info.get_jwks().await?;
 
     // c. get public_key and decode its base64-representation
-    let public_key_base64 = &jwks.get(0).unwrap().n;
+    let key = &jwks.get(0).unwrap();
+    let public_key_base64 = &key.kid;
+    println!("Public_key: {}", public_key_base64);
+    println!();
+    println!("kid_key: {}", key.kid);
+    println!();
+
     let public_key_bytes =
         base64::decode(public_key_base64).map_err(|_| "Could not base64-decode the public key")?;
+    println!("kid_jwt: {:?}", public_key_bytes);
+    println!();
 
     // d. validate id-token-jwt with public key
+    //jwt.validate(public_key_bytes);
     jwt.validate(public_key_bytes);
 
     let payload = jwt.payload;

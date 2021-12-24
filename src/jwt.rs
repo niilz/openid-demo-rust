@@ -1,6 +1,7 @@
 #![allow(unused_variables)]
-use ring::signature;
+use ring::signature::{self, RsaPublicKeyComponents};
 use serde::{Deserialize, Serialize};
+use simple_asn1::BigUint;
 use time::OffsetDateTime;
 
 #[allow(dead_code)]
@@ -156,6 +157,21 @@ pub struct Key {
     pub alg: String, // "RS256
 }
 
+impl Key {
+    pub fn to_public_key(&self) -> RsaPublicKeyComponents<Vec<u8>> {
+        // Use the exponent and the modulus to create the public-key-parts
+        // (Copied from https://github.com/Keats/jsonwebtoken/blob/2f25cbed0a906e091a278c10eeb6cc1cf30dc24a/src/crypto/rsa.rs)
+        let n = base64::decode_config(self.n.clone(), base64::URL_SAFE_NO_PAD)
+            .expect("Could not base64 decode n (modulus)");
+        let e = base64::decode_config(self.e.clone(), base64::URL_SAFE_NO_PAD)
+            .expect("Could not base64 decode e (exponent)");
+        RsaPublicKeyComponents {
+            n: BigUint::from_bytes_be(&n).to_bytes_be(),
+            e: BigUint::from_bytes_be(&e).to_bytes_be(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -164,6 +180,7 @@ mod tests {
     use crate::jwt::Key;
     use crate::jwt::{destruct, get_token_parts, Jwt, Payload};
     use ring::signature;
+    use simple_asn1::BigUint;
     use std::{ops::Add, time::Duration};
     use time::OffsetDateTime;
 
@@ -356,5 +373,51 @@ mod tests {
         let is_valid = jwt.validate(public_key);
 
         assert!(is_valid);
+    }
+
+    #[test]
+    fn can_construct_public_key_from_jwk() {
+        let dummy_key = Key {
+            kty: "unused".to_string(),
+            usage: "unused".to_string(),
+            // Google-Key-Exponent from jwks-uri
+            e: "tCwhHOxX_ylh5kVwfVqW7QIBTIsPjkjCjVCppDrynuF_3msEdtEaG64eJUz84ODFNMCC0BQ57G7wrKQVWkdSDxWUEqGk2BixBiHJRWZdofz1WOBTdPVicvHW5Zl_aIt7uXWMdOp_SODw-O2y2f05EqbFWFnR2-1y9K8KbiOp82CD72ny1Jbb_3PxTs2Z0F4ECAtTzpDteaJtjeeueRjr7040JAjQ-5fpL5D1g8x14LJyVIo-FL_y94NPFbMp7UCi69CIfVHXFO8WYFz949og-47mWRrID5lS4zpx-QLuvNhUb_lSqmylUdQB3HpRdOcYdj3xwy4MHJuu7tTaf0AmCQ".to_string(),
+            kid: "unused".to_string(),
+            // Google-Key-modulus from jwks-uri
+            n: "d98f49bc6ca4581eae8dfadd494fce10ea23aab0".to_string(),
+            alg: "unused".to_string(),
+        };
+
+        let public_key = dummy_key.to_public_key();
+
+        let expected_bytes_exponent = [
+            180, 44, 33, 28, 236, 87, 255, 41, 97, 230, 69, 112, 125, 90, 150, 237, 2, 1, 76, 139,
+            15, 142, 72, 194, 141, 80, 169, 164, 58, 242, 158, 225, 127, 222, 107, 4, 118, 209, 26,
+            27, 174, 30, 37, 76, 252, 224, 224, 197, 52, 192, 130, 208, 20, 57, 236, 110, 240, 172,
+            164, 21, 90, 71, 82, 15, 21, 148, 18, 161, 164, 216, 24, 177, 6, 33, 201, 69, 102, 93,
+            161, 252, 245, 88, 224, 83, 116, 245, 98, 114, 241, 214, 229, 153, 127, 104, 139, 123,
+            185, 117, 140, 116, 234, 127, 72, 224, 240, 248, 237, 178, 217, 253, 57, 18, 166, 197,
+            88, 89, 209, 219, 237, 114, 244, 175, 10, 110, 35, 169, 243, 96, 131, 239, 105, 242,
+            212, 150, 219, 255, 115, 241, 78, 205, 153, 208, 94, 4, 8, 11, 83, 206, 144, 237, 121,
+            162, 109, 141, 231, 174, 121, 24, 235, 239, 78, 52, 36, 8, 208, 251, 151, 233, 47, 144,
+            245, 131, 204, 117, 224, 178, 114, 84, 138, 62, 20, 191, 242, 247, 131, 79, 21, 179,
+            41, 237, 64, 162, 235, 208, 136, 125, 81, 215, 20, 239, 22, 96, 92, 253, 227, 218, 32,
+            251, 142, 230, 89, 26, 200, 15, 153, 82, 227, 58, 113, 249, 2, 238, 188, 216, 84, 111,
+            249, 82, 170, 108, 165, 81, 212, 1, 220, 122, 81, 116, 231, 24, 118, 61, 241, 195, 46,
+            12, 28, 155, 174, 238, 212, 218, 127, 64, 38, 9,
+        ];
+        let expected_bytes_modulus = [
+            119, 223, 31, 227, 214, 220, 233, 198, 184, 231, 205, 94, 105, 239, 29, 125, 167, 93,
+            227, 222, 31, 113, 237, 116, 121, 173, 183, 105, 166, 244,
+        ];
+
+        assert_eq!(
+            BigUint::from_bytes_be(&expected_bytes_exponent).to_bytes_be(),
+            public_key.e
+        );
+        assert_eq!(
+            BigUint::from_bytes_be(&expected_bytes_modulus).to_bytes_be(),
+            public_key.n
+        );
     }
 }
