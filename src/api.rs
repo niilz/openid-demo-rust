@@ -82,7 +82,7 @@ pub async fn handle_success(
         return json!({"Error": "Cross-Site-Request-Forgery is not cool!"});
     }
     // Second: Ask for access- and id-token, by providing the authorization-
-    // code we retreived in in the quer-parameters (perfomed as a POST-request)
+    // code we retrieved from the query-parameters (perfomed as a POST-request)
     let (_access_token, id_token) =
         get_tokens(code, &credentials.client_id, &credentials.client_secret).await;
 
