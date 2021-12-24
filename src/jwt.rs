@@ -63,13 +63,17 @@ pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
     Err("Token has unsupported format")
 }
 
+// TODO: Get rid of these horrible mutable variables
+// The entire thing should be rewritten
 fn get_token_parts(id_token: &str) -> Vec<String> {
-    let token_parts = id_token.split('.');
-    let header_payload_signature = token_parts
-        .take(3)
+    let mut token_parts = id_token.split('.');
+    let mut header_payload_signature: Vec<String> = token_parts
+        .clone()
+        .take(2)
         .filter_map(|part| base64::decode(part).ok())
         .filter_map(|part| String::from_utf8(part).ok())
         .collect();
+    header_payload_signature.push(token_parts.next().unwrap().to_string());
     header_payload_signature
 }
 
