@@ -11,7 +11,7 @@ const ALLOWED_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.goo
 pub struct Jwt {
     pub header: Header,
     pub payload: Payload,
-    pub signature: Option<String>,
+    pub signature: String,
 }
 
 impl Jwt {
@@ -19,24 +19,23 @@ impl Jwt {
     //      just tho then reparse all its pieces into base64 encoded elements again...
 
     // Validation of the authenticity of the ID-Token
-    pub fn validate(&self, public_key: Vec<u8>) -> bool {
+    pub fn validate_from_rsa_parts(&self, public_key: RsaPublicKeyComponents<Vec<u8>>) -> bool {
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
         //    signed using one of the certificates found at the URI specified in the jwks_uri
         //    metadata value of the Discovery document.
-        let signature_bytes =
-            base64::decode(self.signature.as_ref().unwrap()).expect("Could not decode signature");
+        let signature_bytes = base64::decode(&self.signature).expect("Could not decode signature");
 
         // Get base64(header).base64(paload)
         let header_and_payload_base64 = self
             .header_and_payload_base64()
             .expect("Could not transform header and payload to base64");
 
-        // Create Public-Key struct from key-bytes
-        let public_key =
-            signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA256, public_key);
-
         // Check that the signature matches the base64_enoced header.payload
-        match public_key.verify(&header_and_payload_base64.as_bytes(), &signature_bytes) {
+        match public_key.verify(
+            &signature::RSA_PKCS1_2048_8192_SHA512,
+            &header_and_payload_base64.as_bytes(),
+            &signature_bytes,
+        ) {
             Ok(()) => true,
             Err(e) => {
                 eprintln!("The signature does not match the token");
@@ -44,7 +43,6 @@ impl Jwt {
             }
         }
     }
-
     fn header_and_payload_base64(&self) -> serde_json::Result<String> {
         let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
         let head_base64 = base64::encode_config(serde_json::to_string(&self.header)?, config);
@@ -55,12 +53,11 @@ impl Jwt {
 
 pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
     let parts = get_token_parts(id_token.as_ref());
-    if let [header, payload] = &parts[..] {
+    if let [header, payload, signature] = &parts[..] {
         return Ok(Jwt {
             header: serde_json::from_str(header).unwrap(),
             payload: serde_json::from_str(payload).unwrap(),
-            // TODO: Decrypt-Signature
-            signature: None,
+            signature: signature.to_string(),
         });
     };
     Err("Token has unsupported format")
@@ -68,12 +65,12 @@ pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
 
 fn get_token_parts(id_token: &str) -> Vec<String> {
     let token_parts = id_token.split('.');
-    let header_and_payload = token_parts
-        .take(2)
+    let header_payload_signature = token_parts
+        .take(3)
         .filter_map(|part| base64::decode(part).ok())
         .filter_map(|part| String::from_utf8(part).ok())
         .collect();
-    header_and_payload
+    header_payload_signature
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default, Clone)]
@@ -158,7 +155,7 @@ pub struct Key {
 }
 
 impl Key {
-    pub fn to_public_key(&self) -> RsaPublicKeyComponents<Vec<u8>> {
+    pub fn to_rsa_public_key(&self) -> RsaPublicKeyComponents<Vec<u8>> {
         // Use the exponent and the modulus to create the public-key-parts
         // (Copied from https://github.com/Keats/jsonwebtoken/blob/2f25cbed0a906e091a278c10eeb6cc1cf30dc24a/src/crypto/rsa.rs)
         let n = base64::decode_config(self.n.clone(), base64::URL_SAFE_NO_PAD)
@@ -234,7 +231,7 @@ mod tests {
         let expected_jwt = Jwt {
             header,
             payload,
-            signature: None,
+            signature: "ignored".to_string(),
         };
 
         let jwt = destruct(id_token).unwrap();
@@ -339,9 +336,41 @@ mod tests {
                 .expect("Could not sign the JWT");
 
             let signature_base_64 = base64::encode(signature);
-            self.signature = Some(signature_base_64);
+            self.signature = signature_base_64;
 
             Ok(())
+        }
+
+        // NOTE: It is maybe not smart to first construct the JWT into an struct
+        //      just tho then reparse all its pieces into base64 encoded elements again...
+
+        // Validation of the authenticity of the ID-Token
+        pub fn validate(&self, public_key: Vec<u8>) -> bool {
+            // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
+            //    signed using one of the certificates found at the URI specified in the jwks_uri
+            //    metadata value of the Discovery document.
+            let signature_bytes =
+                base64::decode(&self.signature).expect("Could not decode signature");
+
+            // Get base64(header).base64(paload)
+            let header_and_payload_base64 = self
+                .header_and_payload_base64()
+                .expect("Could not transform header and payload to base64");
+
+            // Create Public-Key struct from key-bytes
+            let public_key = signature::UnparsedPublicKey::new(
+                &signature::RSA_PKCS1_2048_8192_SHA256,
+                public_key,
+            );
+
+            // Check that the signature matches the base64_enoced header.payload
+            match public_key.verify(&header_and_payload_base64.as_bytes(), &signature_bytes) {
+                Ok(()) => true,
+                Err(e) => {
+                    eprintln!("The signature does not match the token");
+                    false
+                }
+            }
         }
     }
 
@@ -356,7 +385,7 @@ mod tests {
         let mut jwt = Jwt {
             header,
             payload,
-            signature: None,
+            signature: "ignored".to_string(),
         };
         // Load private-test-key (created with openssl) from filesystem
         let private_key = fs::read("test-private-key.der").expect("Could not read the keyfile");
@@ -388,7 +417,7 @@ mod tests {
             alg: "unused".to_string(),
         };
 
-        let public_key = dummy_key.to_public_key();
+        let public_key = dummy_key.to_rsa_public_key();
 
         let expected_bytes_exponent = [
             180, 44, 33, 28, 236, 87, 255, 41, 97, 230, 69, 112, 125, 90, 150, 237, 2, 1, 76, 139,
