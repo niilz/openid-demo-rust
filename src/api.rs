@@ -100,26 +100,17 @@ pub async fn handle_success(
     let jwks = ip_meta_info.get_jwks().await?;
 
     // c. get public_key and decode its base64-representation
-    let key = jwks.get(0);
-    let key = key.unwrap();
-    // TODO: Figure out how to find out which of the two keys matches
-    //      The 'kid' parameter should be used for that (see: https://auth0.com/blog/navigating-rs256-and-jwks/)
-
-    let rsa_public_key = key.to_rsa_public_key();
-
-    println!("kid_jwt: {:?}", rsa_public_key);
-    println!();
-
-    // d. validate id-token-jwt with public key
-    //jwt.validate(public_key_bytes);
-    let is_valid = jwt.validate_from_rsa_parts(rsa_public_key);
-    if !is_valid {
-        let key = jwks.get(1);
-        let key = key.unwrap();
+    for key in jwks {
         let rsa_public_key = key.to_rsa_public_key();
         println!("kid_jwt: {:?}", rsa_public_key);
         println!();
+        let is_valid = jwt.validate_from_rsa_parts(rsa_public_key);
+        println!("is_valid: {}", is_valid);
     }
+    // TODO: Figure out how to find out which of the two keys matches
+    //      The 'kid' parameter should be used for that (see: https://auth0.com/blog/navigating-rs256-and-jwks/)
+
+    // d. validate id-token-jwt with public key
 
     let payload = jwt.payload;
 

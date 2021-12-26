@@ -162,48 +162,18 @@ impl Key {
     pub fn to_rsa_public_key(&self) -> RsaPublicKeyComponents<Vec<u8>> {
         // Use the exponent and the modulus to create the public-key-parts
         // (Copied from https://github.com/Keats/jsonwebtoken/blob/2f25cbed0a906e091a278c10eeb6cc1cf30dc24a/src/crypto/rsa.rs)
-        // self.n = ad12ewad...
-        println!("n: {}", self.n);
-        // self.e = AQAB
-        println!("e: {}", self.e);
-        println!();
 
         // n_decoded = [180, 44, 33, 28, 236,...
         let n_decoded = base64::decode_config(self.n.clone(), base64::URL_SAFE_NO_PAD)
             .expect("Could not base64 decode n (modulus)");
-        println!("n_decoded: {:?}", n_decoded);
-        println!();
 
-        // n_hex_str: b42c211cec57ff2...
-        let n_hex_str: String = n_decoded.iter().map(|hex| format!("{:02x}", hex)).collect();
-        println!("n_hex_str: {:?}", n_hex_str);
-        println!();
-        // n_from_str: 227446558862271...
-        let n_from_str = BigUint::parse_bytes(n_hex_str.as_bytes(), 16);
-        println!("n_from_str: {:?}", n_from_str);
-        println!();
-
-        // e_decoded = [1, 0, 1] (but should be [0, 1, 0, 0, 0, 1])
+        // e_decoded = [1, 0, 1] (we can think about it as: 010001)
         let e_decoded = base64::decode_config(self.e.clone(), base64::URL_SAFE_NO_PAD)
             .expect("Could not base64 decode e (exponent)");
-        println!("e_decoded: {:?}", e_decoded);
-        println!();
 
-        // e_hex_str: 010001
-        let e_hex_str: String = e_decoded.iter().map(|hex| format!("{:02x}", hex)).collect();
-        println!("e_hex_str: {:?}", e_hex_str);
-        println!();
-        // e_from_str: 65537
-        let e_from_str = BigUint::parse_bytes(e_hex_str.as_bytes(), 16);
-        println!("e_from_str: {:?}", e_from_str);
-        println!();
+        let n_be = BigUint::from_bytes_be(&n_decoded).to_bytes_be();
+        let e_be = BigUint::from_bytes_be(&e_decoded).to_bytes_be();
 
-        //let n_be = BigUint::from_bytes_be(&n_decoded).to_bytes_be();
-        //let e_be = BigUint::from_bytes_be(&e_decoded).to_bytes_be();
-        let n_be = n_from_str.unwrap().to_bytes_be();
-        let e_be = e_from_str.unwrap().to_bytes_be();
-        println!("n_be: {:?}", n_be);
-        println!("e_be: {:?}", e_be);
         RsaPublicKeyComponents { n: n_be, e: e_be }
     }
 }
