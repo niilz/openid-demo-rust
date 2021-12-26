@@ -152,7 +152,7 @@ pub struct Key {
     pub kty: String, // "RSA"
     #[serde(rename = "use")]
     pub usage: String, // "sig"
-    pub e: String,   // "AQAB"
+    pub e: String,   // "AQAB" (Is 65537 in 01 00 01 Hex and than Base64 encoded)
     pub kid: String, // "032b2ef3d2c2806157f8a9b9f4ef779834f85ada"
     pub n: String,   // "1Zdt2akTl0LcFko5ksUyL1caOq0zHO0ijzfKV8Z9vAGA1...."
     pub alg: String, // "RS256
@@ -162,14 +162,49 @@ impl Key {
     pub fn to_rsa_public_key(&self) -> RsaPublicKeyComponents<Vec<u8>> {
         // Use the exponent and the modulus to create the public-key-parts
         // (Copied from https://github.com/Keats/jsonwebtoken/blob/2f25cbed0a906e091a278c10eeb6cc1cf30dc24a/src/crypto/rsa.rs)
-        let n = base64::decode_config(self.n.clone(), base64::URL_SAFE_NO_PAD)
+        // self.n = ad12ewad...
+        println!("n: {}", self.n);
+        // self.e = AQAB
+        println!("e: {}", self.e);
+        println!();
+
+        // n_decoded = [180, 44, 33, 28, 236,...
+        let n_decoded = base64::decode_config(self.n.clone(), base64::URL_SAFE_NO_PAD)
             .expect("Could not base64 decode n (modulus)");
-        let e = base64::decode_config(self.e.clone(), base64::URL_SAFE_NO_PAD)
+        println!("n_decoded: {:?}", n_decoded);
+        println!();
+
+        // n_hex_str: b42c211cec57ff2...
+        let n_hex_str: String = n_decoded.iter().map(|hex| format!("{:02x}", hex)).collect();
+        println!("n_hex_str: {:?}", n_hex_str);
+        println!();
+        // n_from_str: 227446558862271...
+        let n_from_str = BigUint::parse_bytes(n_hex_str.as_bytes(), 16);
+        println!("n_from_str: {:?}", n_from_str);
+        println!();
+
+        // e_decoded = [1, 0, 1] (but should be [0, 1, 0, 0, 0, 1])
+        let e_decoded = base64::decode_config(self.e.clone(), base64::URL_SAFE_NO_PAD)
             .expect("Could not base64 decode e (exponent)");
-        RsaPublicKeyComponents {
-            n: BigUint::from_bytes_be(&n).to_bytes_be(),
-            e: BigUint::from_bytes_be(&e).to_bytes_be(),
-        }
+        println!("e_decoded: {:?}", e_decoded);
+        println!();
+
+        // e_hex_str: 010001
+        let e_hex_str: String = e_decoded.iter().map(|hex| format!("{:02x}", hex)).collect();
+        println!("e_hex_str: {:?}", e_hex_str);
+        println!();
+        // e_from_str: 65537
+        let e_from_str = BigUint::parse_bytes(e_hex_str.as_bytes(), 16);
+        println!("e_from_str: {:?}", e_from_str);
+        println!();
+
+        //let n_be = BigUint::from_bytes_be(&n_decoded).to_bytes_be();
+        //let e_be = BigUint::from_bytes_be(&e_decoded).to_bytes_be();
+        let n_be = n_from_str.unwrap().to_bytes_be();
+        let e_be = e_from_str.unwrap().to_bytes_be();
+        println!("n_be: {:?}", n_be);
+        println!("e_be: {:?}", e_be);
+        RsaPublicKeyComponents { n: n_be, e: e_be }
     }
 }
 

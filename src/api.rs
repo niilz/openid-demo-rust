@@ -112,7 +112,14 @@ pub async fn handle_success(
 
     // d. validate id-token-jwt with public key
     //jwt.validate(public_key_bytes);
-    jwt.validate_from_rsa_parts(rsa_public_key);
+    let is_valid = jwt.validate_from_rsa_parts(rsa_public_key);
+    if !is_valid {
+        let key = jwks.get(1);
+        let key = key.unwrap();
+        let rsa_public_key = key.to_rsa_public_key();
+        println!("kid_jwt: {:?}", rsa_public_key);
+        println!();
+    }
 
     let payload = jwt.payload;
 
