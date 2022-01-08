@@ -67,7 +67,7 @@ pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
 // TODO: Get rid of these horrible mutable variables
 // The entire thing should be rewritten
 fn get_token_parts(id_token: &str) -> Vec<String> {
-    let mut token_parts = id_token.split('.');
+    let token_parts = id_token.split('.');
     let mut header_payload_signature: Vec<String> = token_parts
         .clone()
         .take(2)
@@ -465,5 +465,41 @@ mod tests {
             BigUint::from_bytes_be(&expected_bytes_modulus).to_bytes_be(),
             public_key.n
         );
+    }
+
+    use openssl::{
+        hash::MessageDigest,
+        pkey::PKey,
+        rsa::Rsa,
+        sign::{Signer, Verifier},
+    };
+    #[test]
+    fn can_validate_the_id_token_signature_with_modulo_and_exponent() {
+        // Load private-test-key (created with openssl) from filesystem
+        let private_key_bytes =
+            fs::read("test-private-key.der").expect("Could not read the keyfile");
+
+        let private_key_rsa = Rsa::private_key_from_der(&private_key_bytes).unwrap();
+        let keypair = PKey::from_rsa(private_key_rsa).unwrap();
+        let mut signer = Signer::new(MessageDigest::sha256(), &keypair).unwrap();
+
+        // Sign some data with test-private-key
+        let data = b"Hello openid";
+        signer.update(data).unwrap();
+        let signature = signer.sign_to_vec().unwrap();
+
+        let verifier = Verifier::new(MessageDigest::sha256(), &keypair).unwrap();
+        let is_valid = verifier.verify(&signature).unwrap();
+
+        println!("is_valid: {}", is_valid);
+
+        // Read test-public-key from filesystem
+        //let public_key = fs::read("test-public-key.der").expect("Could not read public key");
+
+        // Get modulus and exponent
+        // validate the JWT
+        //let is_valid = jwt.validate(public_key);
+
+        assert!(is_valid);
     }
 }
