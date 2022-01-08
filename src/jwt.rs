@@ -31,6 +31,7 @@ impl Jwt {
             .expect("Could not transform header and payload to base64");
 
         // Check that the signature matches the base64_enoced header.payload
+        // ERROR: The VERIFY-Function does not work (it always fails)
         match public_key.verify(
             &signature::RSA_PKCS1_2048_8192_SHA512,
             &header_and_payload_base64.as_bytes(),
@@ -73,7 +74,7 @@ fn get_token_parts(id_token: &str) -> Vec<String> {
         .filter_map(|part| base64::decode(part).ok())
         .filter_map(|part| String::from_utf8(part).ok())
         .collect();
-    header_payload_signature.push(token_parts.next().unwrap().to_string());
+    header_payload_signature.push(token_parts.last().unwrap().to_string());
     header_payload_signature
 }
 
@@ -210,13 +211,19 @@ mod tests {
     fn can_get_token_parts() {
         let header = "header-stuff-algo-256";
         let payload = "payload-12345-claims";
+        let signature = "signature";
 
         let header_en = base64::encode(header);
         let payload_en = base64::encode(payload);
+        let signature = base64::encode(signature);
 
-        let id_token = format!("{}.{}", header_en, payload_en);
+        let id_token = format!("{}.{}.{}", header_en, payload_en, signature);
 
-        let expected_parts = vec!["header-stuff-algo-256", "payload-12345-claims"];
+        let expected_parts = vec![
+            "header-stuff-algo-256",
+            "payload-12345-claims",
+            "c2lnbmF0dXJl",
+        ];
         let parts = get_token_parts(&id_token);
         assert_eq!(expected_parts, parts);
     }
@@ -240,7 +247,8 @@ mod tests {
         let expected_jwt = Jwt {
             header,
             payload,
-            signature: "ignored".to_string(),
+            // "ignored" base64 encoded
+            signature: "aWdub3JlZA==".to_string(),
         };
 
         let jwt = destruct(id_token).unwrap();
