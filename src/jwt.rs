@@ -186,6 +186,8 @@ mod tests {
     use crate::jwt::Jwks;
     use crate::jwt::Key;
     use crate::jwt::{destruct, get_token_parts, Jwt, Payload};
+    use ::rand::thread_rng;
+    use ::rand::Rng;
     use ring::signature;
     use simple_asn1::BigUint;
     use std::{ops::Add, time::Duration};
@@ -465,41 +467,5 @@ mod tests {
             BigUint::from_bytes_be(&expected_bytes_modulus).to_bytes_be(),
             public_key.n
         );
-    }
-
-    use openssl::{
-        hash::MessageDigest,
-        pkey::PKey,
-        rsa::Rsa,
-        sign::{Signer, Verifier},
-    };
-    #[test]
-    fn can_validate_the_id_token_signature_with_modulo_and_exponent() {
-        // Load private-test-key (created with openssl) from filesystem
-        let private_key_bytes =
-            fs::read("test-private-key.der").expect("Could not read the keyfile");
-
-        let private_key_rsa = Rsa::private_key_from_der(&private_key_bytes).unwrap();
-        let keypair = PKey::from_rsa(private_key_rsa).unwrap();
-        let mut signer = Signer::new(MessageDigest::sha256(), &keypair).unwrap();
-
-        // Sign some data with test-private-key
-        let data = b"Hello openid";
-        signer.update(data).unwrap();
-        let signature = signer.sign_to_vec().unwrap();
-
-        let verifier = Verifier::new(MessageDigest::sha256(), &keypair).unwrap();
-        let is_valid = verifier.verify(&signature).unwrap();
-
-        println!("is_valid: {}", is_valid);
-
-        // Read test-public-key from filesystem
-        //let public_key = fs::read("test-public-key.der").expect("Could not read public key");
-
-        // Get modulus and exponent
-        // validate the JWT
-        //let is_valid = jwt.validate(public_key);
-
-        assert!(is_valid);
     }
 }

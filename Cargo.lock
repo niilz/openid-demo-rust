@@ -740,7 +740,6 @@ name = "openid"
 version = "0.1.0"
 dependencies = [
  "base64",
- "openssl",
  "rand",
  "reqwest",
  "ring",
