@@ -64,6 +64,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "real web request to google shouldn't always be performed"]
     fn can_read_well_known_document() {
         let response_types_supported = [
             "code",
