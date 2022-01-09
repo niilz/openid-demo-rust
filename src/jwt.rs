@@ -186,8 +186,6 @@ mod tests {
     use crate::jwt::Jwks;
     use crate::jwt::Key;
     use crate::jwt::{destruct, get_token_parts, Jwt, Payload};
-    use ::rand::thread_rng;
-    use ::rand::Rng;
     use ring::signature;
     use simple_asn1::BigUint;
     use std::{ops::Add, time::Duration};
