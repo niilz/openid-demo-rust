@@ -20,15 +20,19 @@ impl Jwt {
 
     // Validation of the authenticity of the ID-Token
     pub fn validate_from_rsa_parts(&self, public_key: RsaPublicKeyComponents<Vec<u8>>) -> bool {
+        println!("self.Signature {}", self.signature);
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
         //    signed using one of the certificates found at the URI specified in the jwks_uri
         //    metadata value of the Discovery document.
-        let signature_bytes = base64::decode(&self.signature).expect("Could not decode signature");
+        let signature_bytes = base64::decode_config(&self.signature, base64::URL_SAFE_NO_PAD)
+            .expect("Could not decode signature");
 
         // Get base64(header).base64(paload)
         let header_and_payload_base64 = self
             .header_and_payload_base64()
             .expect("Could not transform header and payload to base64");
+
+        println!("header.payload: {}", header_and_payload_base64);
 
         // Check that the signature matches the base64_enoced header.payload
         // ERROR: The VERIFY-Function does not work (it always fails)
@@ -44,10 +48,16 @@ impl Jwt {
             }
         }
     }
+
     fn header_and_payload_base64(&self) -> serde_json::Result<String> {
-        let config = base64::Config::new(base64::CharacterSet::UrlSafe, false);
-        let head_base64 = base64::encode_config(serde_json::to_string(&self.header)?, config);
-        let payload_base64 = base64::encode_config(serde_json::to_string(&self.payload)?, config);
+        let head_base64 = base64::encode_config(
+            serde_json::to_string(&self.header)?,
+            base64::URL_SAFE_NO_PAD,
+        );
+        let payload_base64 = base64::encode_config(
+            serde_json::to_string(&self.payload)?,
+            base64::URL_SAFE_NO_PAD,
+        );
         Ok(format!("{}.{}", head_base64, payload_base64))
     }
 }
@@ -67,14 +77,18 @@ pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
 // TODO: Get rid of these horrible mutable variables
 // The entire thing should be rewritten
 fn get_token_parts(id_token: &str) -> Vec<String> {
+    println!("All Token Parts: {}", id_token);
     let token_parts = id_token.split('.');
     let mut header_payload_signature: Vec<String> = token_parts
         .clone()
         .take(2)
-        .filter_map(|part| base64::decode(part).ok())
+        .filter_map(|part| base64::decode_config(part, base64::URL_SAFE_NO_PAD).ok())
         .filter_map(|part| String::from_utf8(part).ok())
         .collect();
-    header_payload_signature.push(token_parts.last().unwrap().to_string());
+    println!("All Token split: {:?}", token_parts);
+    let signature = token_parts.last().unwrap();
+    println!("     signature: {}", signature);
+    header_payload_signature.push(signature.to_string());
     header_payload_signature
 }
 
@@ -88,19 +102,14 @@ pub struct Header {
 // Only implements default, to make it easier to test
 #[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct Payload {
-    // ALWAYS: The audience that this ID token is intended for
-    pub aud: String,
-    // ALWAYS: Expiration time on or after which the ID token must not be accepted. Represented in Unix time (integer seconds).
-    pub exp: i64,
-    // ALWAYS: The time the ID token was issued. Represented in Unix time (integer seconds).
-    pub iat: u32,
     // ALWAYS: The Issuer Identifier for the Issuer of the response. Always https://accounts.google.com or accounts.google.com for Google ID tokens
     pub iss: String,
-    // ALWAYS: An identifier for the user, unique among all Google accounts and never reused
-    pub sub: String,
-
     // The client_id of the authorized presenter
     pub azp: String,
+    // ALWAYS: The audience that this ID token is intended for
+    pub aud: String,
+    // ALWAYS: An identifier for the user, unique among all Google accounts and never reused
+    pub sub: String,
     // "user@email.com",
     pub email: String,
     // True if the user's e-mail address has been verified; otherwise false.
@@ -119,6 +128,10 @@ pub struct Payload {
     pub family_name: String,
     // The user's locale, represented by a BCP 47 language tag
     pub locale: String,
+    // ALWAYS: The time the ID token was issued. Represented in Unix time (integer seconds).
+    pub iat: u32,
+    // ALWAYS: Expiration time on or after which the ID token must not be accepted. Represented in Unix time (integer seconds).
+    pub exp: i64,
 }
 
 #[allow(dead_code)]
@@ -164,7 +177,7 @@ impl Key {
         // Use the exponent and the modulus to create the public-key-parts
         // (Copied from https://github.com/Keats/jsonwebtoken/blob/2f25cbed0a906e091a278c10eeb6cc1cf30dc24a/src/crypto/rsa.rs)
 
-        // n_decoded = [180, 44, 33, 28, 236,...
+        // n_decoded = [181, 4, 153, 152, 231, 167, 23, 71, 223, 91, 176,...
         let n_decoded = base64::decode_config(self.n.clone(), base64::URL_SAFE_NO_PAD)
             .expect("Could not base64 decode n (modulus)");
 
@@ -187,6 +200,7 @@ mod tests {
     use crate::jwt::Key;
     use crate::jwt::{destruct, get_token_parts, Jwt, Payload};
     use ring::signature;
+    use rsa::pkcs8::ToPublicKey;
     use simple_asn1::BigUint;
     use std::{ops::Add, time::Duration};
     use time::OffsetDateTime;
@@ -331,6 +345,40 @@ mod tests {
         assert_eq!(expected_jwks, deserialized_jwks);
     }
 
+    #[test]
+    fn encodes_payload_correctly_as_base64() {
+        let jwt_json = serde_json::json!({
+        "iss": "https://accounts.google.com",
+        "azp": "291682216658-ufvd2b72f0o0ss7g3dgmjmm1jpmaqifs.apps.googleusercontent.com",
+        "aud": "291682216658-ufvd2b72f0o0ss7g3dgmjmm1jpmaqifs.apps.googleusercontent.com",
+        "sub": "113024302343948371585",
+        "email": "daredevdiary@gmail.com",
+        "email_verified": true,
+        "at_hash": "qnSaWmwNn7CepwfJQH5uFw",
+        "nonce": "5171108-0780833-7163765",
+        "name": "Nils Haberstroh",
+        "picture": "https://lh3.googleusercontent.com/a/AATXAJz5p3_IYclXj5h6oiVKxYbQ0w23y1KtXkw2-sYM=s96-c",
+        "given_name": "Nils",
+        "family_name": "Haberstroh",
+        "locale": "de",
+        "iat": 1642362417,
+        "exp": 1642366017
+        }).to_string();
+
+        let expected_payload_base64 = "eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6InFuU2FXbXdObjdDZXB3ZkpRSDV1RnciLCJub25jZSI6IjUxNzExMDgtMDc4MDgzMy03MTYzNzY1IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NDIzNjI0MTcsImV4cCI6MTY0MjM2NjAxN30";
+
+        let controle_payload_base64 = base64::encode_config(&jwt_json, base64::URL_SAFE_NO_PAD);
+        assert_eq!(expected_payload_base64, controle_payload_base64);
+
+        let payload: Payload = serde_json::from_str(&jwt_json).unwrap();
+        let payload_base64 = base64::encode_config(
+            &serde_json::to_string(&payload).unwrap(),
+            base64::URL_SAFE_NO_PAD,
+        );
+
+        assert_eq!(expected_payload_base64, payload_base64);
+    }
+
     // Impl just for tests
     impl Jwt {
         fn sign_jwt(&mut self, private_key: Vec<u8>) -> serde_json::Result<()> {
@@ -427,43 +475,61 @@ mod tests {
             kty: "unused".to_string(),
             usage: "unused".to_string(),
             // Google-Key-Exponent from jwks-uri
-            e: "tCwhHOxX_ylh5kVwfVqW7QIBTIsPjkjCjVCppDrynuF_3msEdtEaG64eJUz84ODFNMCC0BQ57G7wrKQVWkdSDxWUEqGk2BixBiHJRWZdofz1WOBTdPVicvHW5Zl_aIt7uXWMdOp_SODw-O2y2f05EqbFWFnR2-1y9K8KbiOp82CD72ny1Jbb_3PxTs2Z0F4ECAtTzpDteaJtjeeueRjr7040JAjQ-5fpL5D1g8x14LJyVIo-FL_y94NPFbMp7UCi69CIfVHXFO8WYFz949og-47mWRrID5lS4zpx-QLuvNhUb_lSqmylUdQB3HpRdOcYdj3xwy4MHJuu7tTaf0AmCQ".to_string(),
+            n: "tQSZmOenF0ffW7BrOzL8u4r5XH0xsI3QpFYvVSCFWrBiPWDPVjfssA6uoGI6sn3aw810Er6Atv2BjeUvrFeMLkFwuRRFyE95aCSx0s-hDNtXsIOvX7LcJgQn3F3gVUPUvQDfL40DnMq0CWWpNCxNggBdok4emegiQO-C4J7aKy_ACcznsmMVtABvJDM_KpayIfWQfujsfQ8x0pggoxfPIopZLzZaMq8teEYcpVzbNvMyMopNMNPvnKMe56O_Clf_3HQBQtovHYCOK33mJmx4u1aijRMIfgoJYdVA26raLYx5_gNu_De9VWyrvknNwCSYtS0t7xIqzH2oiKtGiM9nJw".to_string(),
             kid: "unused".to_string(),
             // Google-Key-modulus from jwks-uri
-            n: "d98f49bc6ca4581eae8dfadd494fce10ea23aab0".to_string(),
+            e: "AQAB".to_string(),
             alg: "unused".to_string(),
         };
 
         let public_key = dummy_key.to_rsa_public_key();
 
-        let expected_bytes_exponent = [
-            180, 44, 33, 28, 236, 87, 255, 41, 97, 230, 69, 112, 125, 90, 150, 237, 2, 1, 76, 139,
-            15, 142, 72, 194, 141, 80, 169, 164, 58, 242, 158, 225, 127, 222, 107, 4, 118, 209, 26,
-            27, 174, 30, 37, 76, 252, 224, 224, 197, 52, 192, 130, 208, 20, 57, 236, 110, 240, 172,
-            164, 21, 90, 71, 82, 15, 21, 148, 18, 161, 164, 216, 24, 177, 6, 33, 201, 69, 102, 93,
-            161, 252, 245, 88, 224, 83, 116, 245, 98, 114, 241, 214, 229, 153, 127, 104, 139, 123,
-            185, 117, 140, 116, 234, 127, 72, 224, 240, 248, 237, 178, 217, 253, 57, 18, 166, 197,
-            88, 89, 209, 219, 237, 114, 244, 175, 10, 110, 35, 169, 243, 96, 131, 239, 105, 242,
-            212, 150, 219, 255, 115, 241, 78, 205, 153, 208, 94, 4, 8, 11, 83, 206, 144, 237, 121,
-            162, 109, 141, 231, 174, 121, 24, 235, 239, 78, 52, 36, 8, 208, 251, 151, 233, 47, 144,
-            245, 131, 204, 117, 224, 178, 114, 84, 138, 62, 20, 191, 242, 247, 131, 79, 21, 179,
-            41, 237, 64, 162, 235, 208, 136, 125, 81, 215, 20, 239, 22, 96, 92, 253, 227, 218, 32,
-            251, 142, 230, 89, 26, 200, 15, 153, 82, 227, 58, 113, 249, 2, 238, 188, 216, 84, 111,
-            249, 82, 170, 108, 165, 81, 212, 1, 220, 122, 81, 116, 231, 24, 118, 61, 241, 195, 46,
-            12, 28, 155, 174, 238, 212, 218, 127, 64, 38, 9,
-        ];
+        // in HEX (see: https://cryptii.com/pipes/base64-to-hex)
+        // b5 04 99 98 e7 a7 17 47 df 5b b0 6b 3b 32 fc bb 8a f9 5c 7d 31 b0 8d d0 a4 56 2f 55 20 85 5a b0 62 3d 60 cf 56 37 ec b0 0e ae a0 62 3a b2 7d da c3 cd 74 12 be 80 b6 fd 81 8d e5 2f ac 57 8c 2e 41 70 b9 14 45 c8 4f 79 68 24 b1 d2 cf a1 0c db 57 b0 83 af 5f b2 dc 26 04 27 dc 5d e0 55 43 d4 bd 00 df 2f 8d 03 9c ca b4 09 65 a9 34 2c 4d 82 00 5d a2 4e 1e 99 e8 22 40 ef 82 e0 9e da 2b 2f c0 09 cc e7 b2 63 15 b4 00 6f 24 33 3f 2a 96 b2 21 f5 90 7e e8 ec 7d 0f 31 d2 98 20 a3 17 cf 22 8a 59 2f 36 5a 32 af 2d 78 46 1c a5 5c db 36 f3 32 32 8a 4d 30 d3 ef 9c a3 1e e7 a3 bf 0a 57 ff dc 74 01 42 da 2f 1d 80 8e 2b 7d e6 26 6c 78 bb 56 a2 8d 13 08 7e 0a 09 61 d5 40 db aa da 2d 8c 79 fe 03 6e fc 37 bd 55 6c ab be 49 cd c0 24 98 b5 2d 2d ef 12 2a cc 7d a8 88 ab 46 88 cf 67 27
+        let expected_bytes_exponent = [1, 0, 1];
         let expected_bytes_modulus = [
-            119, 223, 31, 227, 214, 220, 233, 198, 184, 231, 205, 94, 105, 239, 29, 125, 167, 93,
-            227, 222, 31, 113, 237, 116, 121, 173, 183, 105, 166, 244,
+            181, 4, 153, 152, 231, 167, 23, 71, 223, 91, 176, 107, 59, 50, 252, 187, 138, 249, 92,
+            125, 49, 176, 141, 208, 164, 86, 47, 85, 32, 133, 90, 176, 98, 61, 96, 207, 86, 55,
+            236, 176, 14, 174, 160, 98, 58, 178, 125, 218, 195, 205, 116, 18, 190, 128, 182, 253,
+            129, 141, 229, 47, 172, 87, 140, 46, 65, 112, 185, 20, 69, 200, 79, 121, 104, 36, 177,
+            210, 207, 161, 12, 219, 87, 176, 131, 175, 95, 178, 220, 38, 4, 39, 220, 93, 224, 85,
+            67, 212, 189, 0, 223, 47, 141, 3, 156, 202, 180, 9, 101, 169, 52, 44, 77, 130, 0, 93,
+            162, 78, 30, 153, 232, 34, 64, 239, 130, 224, 158, 218, 43, 47, 192, 9, 204, 231, 178,
+            99, 21, 180, 0, 111, 36, 51, 63, 42, 150, 178, 33, 245, 144, 126, 232, 236, 125, 15,
+            49, 210, 152, 32, 163, 23, 207, 34, 138, 89, 47, 54, 90, 50, 175, 45, 120, 70, 28, 165,
+            92, 219, 54, 243, 50, 50, 138, 77, 48, 211, 239, 156, 163, 30, 231, 163, 191, 10, 87,
+            255, 220, 116, 1, 66, 218, 47, 29, 128, 142, 43, 125, 230, 38, 108, 120, 187, 86, 162,
+            141, 19, 8, 126, 10, 9, 97, 213, 64, 219, 170, 218, 45, 140, 121, 254, 3, 110, 252, 55,
+            189, 85, 108, 171, 190, 73, 205, 192, 36, 152, 181, 45, 45, 239, 18, 42, 204, 125, 168,
+            136, 171, 70, 136, 207, 103, 39,
         ];
 
-        assert_eq!(
-            BigUint::from_bytes_be(&expected_bytes_exponent).to_bytes_be(),
-            public_key.e
-        );
-        assert_eq!(
-            BigUint::from_bytes_be(&expected_bytes_modulus).to_bytes_be(),
-            public_key.n
-        );
+        let expected_e = rsa::BigUint::from_bytes_be(&expected_bytes_exponent);
+        assert_eq!(expected_e.to_bytes_be(), public_key.e);
+        let expected_n = rsa::BigUint::from_bytes_be(&expected_bytes_modulus);
+        assert_eq!(expected_n.to_bytes_be(), public_key.n);
+
+        // Construct and write public key from exponent and modulus
+        let public_key_big_e = rsa::BigUint::from_bytes_be(&public_key.e);
+        let public_key_big_n = rsa::BigUint::from_bytes_be(&public_key.n);
+        let _ = rsa::RsaPublicKey::new(public_key_big_n, public_key_big_e)
+            .unwrap()
+            .write_public_key_pem_file("public-key-from-components.pem");
+
+        let public_key = fs::read_to_string("public-key-from-components.pem").unwrap();
+
+        // see https://8gwifi.org/jwkconvertfunctions.jsp (paste in the google jwk)
+        let expected_pub_key = "-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtQSZmOenF0ffW7BrOzL8
+u4r5XH0xsI3QpFYvVSCFWrBiPWDPVjfssA6uoGI6sn3aw810Er6Atv2BjeUvrFeM
+LkFwuRRFyE95aCSx0s+hDNtXsIOvX7LcJgQn3F3gVUPUvQDfL40DnMq0CWWpNCxN
+ggBdok4emegiQO+C4J7aKy/ACcznsmMVtABvJDM/KpayIfWQfujsfQ8x0pggoxfP
+IopZLzZaMq8teEYcpVzbNvMyMopNMNPvnKMe56O/Clf/3HQBQtovHYCOK33mJmx4
+u1aijRMIfgoJYdVA26raLYx5/gNu/De9VWyrvknNwCSYtS0t7xIqzH2oiKtGiM9n
+JwIDAQAB
+-----END PUBLIC KEY-----
+";
+
+        assert_eq!(expected_pub_key, public_key);
     }
 }
