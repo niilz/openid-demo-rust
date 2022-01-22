@@ -118,7 +118,8 @@ pub async fn handle_success(
     // If User is new register the user by saving it into the repository
     // Otherwise get the user from the repository
     let mut repo = user_repo.lock().unwrap();
-    let _user = session_user(&mut repo, payload.name);
+    let payload = serde_json::json!(payload);
+    let _user = session_user(&mut repo, payload["name"].to_string());
     drop(repo);
 
     // TODO:

@@ -9,8 +9,8 @@ const ALLOWED_ISSUERS: [&str; 2] = ["https://accounts.google.com", "accounts.goo
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Jwt {
-    pub header: Header,
-    pub payload: Payload,
+    pub header: String,
+    pub payload: String,
     pub signature: String,
 }
 
@@ -63,40 +63,15 @@ impl Jwt {
 }
 
 pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
-    let parts = get_token_parts(id_token.as_ref());
+    let parts: Vec<&str> = id_token.as_ref().split('.').collect();
     if let [header, payload, signature] = &parts[..] {
         return Ok(Jwt {
-            header: serde_json::from_str(header).unwrap(),
-            payload: serde_json::from_str(payload).unwrap(),
+            header: header.to_string(),
+            payload: payload.to_string(),
             signature: signature.to_string(),
         });
     };
     Err("Token has unsupported format")
-}
-
-// TODO: Get rid of these horrible mutable variables
-// The entire thing should be rewritten
-fn get_token_parts(id_token: &str) -> Vec<String> {
-    println!("All Token Parts: {}", id_token);
-    let token_parts = id_token.split('.');
-    let mut header_payload_signature: Vec<String> = token_parts
-        .clone()
-        .take(2)
-        .filter_map(|part| base64::decode_config(part, base64::URL_SAFE_NO_PAD).ok())
-        .filter_map(|part| String::from_utf8(part).ok())
-        .collect();
-    println!("All Token split: {:?}", token_parts);
-    let signature = token_parts.last().unwrap();
-    println!("     signature: {}", signature);
-    header_payload_signature.push(signature.to_string());
-    header_payload_signature
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default, Clone)]
-pub struct Header {
-    alg: String, // "RS256"
-    kid: String, // "c1892eb49d7ef9adf8b2e14c05ca0d032714a237",
-    typ: String, // "JWT"
 }
 
 // Only implements default, to make it easier to test
@@ -195,51 +170,44 @@ impl Key {
 #[cfg(test)]
 mod tests {
 
-    use crate::jwt::Header;
     use crate::jwt::Jwks;
     use crate::jwt::Key;
-    use crate::jwt::{destruct, get_token_parts, Jwt, Payload};
+    use crate::jwt::{destruct, Jwt, Payload};
     use ring::signature;
     use rsa::pkcs8::ToPublicKey;
-    use simple_asn1::BigUint;
-    use std::{ops::Add, time::Duration};
+    use std::ops::Add;
+    use std::time::Duration;
     use time::OffsetDateTime;
 
-    fn get_test_header() -> Header {
-        Header {
-            alg: "RS256".to_string(),
-            kid: "some-code-123".to_string(),
-            typ: "JWT".to_string(),
-        }
+    fn get_test_header() -> String {
+        serde_json::json!({
+            "alg": "RS256",
+            "kid": "some-code-123",
+            "typ": "JWT",
+        })
+        .to_string()
     }
 
-    fn get_test_payload() -> Payload {
+    fn get_test_payload() -> String {
         // minimal Payload
-        let mut payload = Payload::default();
-        payload.iss = "the-iss".to_string();
-        payload.aud = "the-client-id".to_string();
-        payload
-    }
-
-    #[test]
-    fn can_get_token_parts() {
-        let header = "header-stuff-algo-256";
-        let payload = "payload-12345-claims";
-        let signature = "signature";
-
-        let header_en = base64::encode(header);
-        let payload_en = base64::encode(payload);
-        let signature = base64::encode(signature);
-
-        let id_token = format!("{}.{}.{}", header_en, payload_en, signature);
-
-        let expected_parts = vec![
-            "header-stuff-algo-256",
-            "payload-12345-claims",
-            "c2lnbmF0dXJl",
-        ];
-        let parts = get_token_parts(&id_token);
-        assert_eq!(expected_parts, parts);
+        serde_json::json!({
+          "iss": "https://accounts.google.com",
+          "azp": "unsused",
+          "aud": "291682216658-ufvd2b72f0o0ss7g3dgmjmm1jpmaqifs.apps.googleusercontent.com",
+          "sub": "unsused",
+          "email": "unsused",
+          "email_verified": true,
+          "at_hash": "unsused",
+          "nonce": "unsused",
+          "name": "unsused",
+          "picture": "unsused",
+          "given_name": "unsused",
+          "family_name": "unsused",
+          "locale": "unsused",
+          "iat": 123,
+          "exp": 123
+        })
+        .to_string()
     }
 
     #[test]
@@ -248,21 +216,17 @@ mod tests {
         let payload = get_test_payload();
         let signature = "ignored".to_string();
 
-        let id_token = [
-            serde_json::to_string(&header)?,
-            serde_json::to_string(&payload)?,
-            signature,
-        ]
-        .iter()
-        .map(|part| base64::encode(part))
-        .collect::<Vec<String>>()
-        .join(".");
+        let id_token = [&header, &payload, &signature]
+            .iter()
+            .map(|part| base64::encode_config(part, base64::URL_SAFE_NO_PAD))
+            .collect::<Vec<String>>()
+            .join(".");
 
         let expected_jwt = Jwt {
-            header,
-            payload,
-            // "ignored" base64 encoded
-            signature: "aWdub3JlZA==".to_string(),
+            header: base64::encode_config(header, base64::URL_SAFE_NO_PAD),
+            payload: base64::encode_config(payload, base64::URL_SAFE_NO_PAD),
+            // "ignored" base64 encoded (url-safe, no-pad)
+            signature: "aWdub3JlZA".to_string(),
         };
 
         let jwt = destruct(id_token).unwrap();
@@ -382,7 +346,7 @@ mod tests {
     // Impl just for tests
     impl Jwt {
         fn sign_jwt(&mut self, private_key: Vec<u8>) -> serde_json::Result<()> {
-            let alg = self.header.alg.clone();
+            let alg = serde_json::json!(&self.header)["alg"].to_string();
             let jwt_base64 = self.header_and_payload_base64()?;
 
             // Construct ring-KeyPair
