@@ -515,6 +515,10 @@ JwIDAQAB
 
     #[test]
     fn can_construct_public_key_from_jwk_with_rsa_public_key_components() {
+        let header = "eyeyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IkV6Uzd6bWVzVDAwN0o2TEFYQ2dNN1EiLCJub25jZSI6IjY3ODY0MDQtMjUwMDY0NS0xNzcxODU0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NTAyNjU0NjYsImV4cCI6MTY1MDI2OTA2Nn0.UP4smfJztaR5DoY01bFM6SrlX_26P7p8nEWjm3TuqXIb0mUGpQx8rR3UmzKYEddNPIdicKZJFAYm4Y9-fJ93xjn1Tb8tHl4suKIcbXLFeF9lNLzF5MW2AcydCRe6fqnl7ZKZb9zI9qSzcl1NDIUbJK23H8wQBmkYOkCU449T0U6s_KRacav_kMw6RTFYyEEOXi1D3HvsApAT2nGPUVtfcAdXKhLg_aDV8ybNWO8vLCBmbftAHYMcpTX7f-8kWI4-C9fGcrZ_-JO56aYJQk3rcnJzK2e2lY3uWIakcngzZN2wjJjgzZOwz1Ne4vGb_FCGF_L_R5B85Y537_dIgNdMZQJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ";
+        let payload = "eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IldEdF9MRUlsNFFORV8yNVppXy1qQ3ciLCJub25jZSI6Ijc1ODg2MjYtMjA3NDExNi02NzA2MTM0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NDk5MzUxMzEsImV4cCI6MTY0OTkzODczMX0";
+        let signature = "JoEW1ehJ8-hUV22oWNA_iVHjc75lmEY-9KJ71drz9udB_UcWKtLVKsbRNNGBec8sdBNkpbsWvmNTv4nSdnsA-Uwb35twBKqSyxJDSAElvnd3_7y0RMYIbFn-rmPdW58IApxzVhlfQbjBQNQMjF5YdIEP-BbxIfiBLg19PrGWwrVNhrG_Y_BbrjdS4-7903mGqO_RFaBCTvbPn7dZoJMZrlMDZPumyIdHeFGa4L2dbf6kKurfZp3sct899VFhjaVNgyHVGOUr7xRFrsQnfzj4jy4hOmXU8msKbxjEgX0s8eRmnae8YnTBwoycLLqrv1K9-bVx_LwisvcoCeXgNaQIcQ";
+
         let jwk_json = r#"{
             "keys": [
               {
@@ -542,18 +546,23 @@ JwIDAQAB
         let pub_key_pem = public_key_rsa.to_public_key_pem().unwrap();
         println!("rsa_pub_key: {}", pub_key_pem);
 
-        use google_jwt_verify::Client;
-        let client_id = "291682216658-ufvd2b72f0o0ss7g3dgmjmm1jpmaqifs.apps.googleusercontent.com";
-        let token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IkV6Uzd6bWVzVDAwN0o2TEFYQ2dNN1EiLCJub25jZSI6IjY3ODY0MDQtMjUwMDY0NS0xNzcxODU0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NTAyNjU0NjYsImV4cCI6MTY1MDI2OTA2Nn0.UP4smfJztaR5DoY01bFM6SrlX_26P7p8nEWjm3TuqXIb0mUGpQx8rR3UmzKYEddNPIdicKZJFAYm4Y9-fJ93xjn1Tb8tHl4suKIcbXLFeF9lNLzF5MW2AcydCRe6fqnl7ZKZb9zI9qSzcl1NDIUbJK23H8wQBmkYOkCU449T0U6s_KRacav_kMw6RTFYyEEOXi1D3HvsApAT2nGPUVtfcAdXKhLg_aDV8ybNWO8vLCBmbftAHYMcpTX7f-8kWI4-C9fGcrZ_-JO56aYJQk3rcnJzK2e2lY3uWIakcngzZN2wjJjgzZOwz1Ne4vGb_FCGF_L_R5B85Y537_dIgNdMZQ";
+        use openssl::{bn::BigNum, hash::MessageDigest, pkey::PKey, rsa::Rsa, sign::Verifier};
 
-        let client = Client::new(&client_id);
-        let token = client.verify_id_token(&token);
-        match token {
-            Ok(id_payload) => println!(
-                "This lib works! Email: {}",
-                id_payload.get_payload().get_name()
-            ),
-            Err(e) => println!("outschiii from lib: {e:?}"),
+        let n_ssl =
+            BigNum::from_slice(&base64::decode_config(&key.n, base64::URL_SAFE_NO_PAD).unwrap())
+                .unwrap();
+        let e_ssl =
+            BigNum::from_slice(&base64::decode_config(&key.e, base64::URL_SAFE_NO_PAD).unwrap())
+                .unwrap();
+        let key = PKey::from_rsa(Rsa::from_public_components(n_ssl, e_ssl).unwrap()).unwrap();
+        let mut verifier = Verifier::new(MessageDigest::sha256(), &key).unwrap();
+        match verifier.update(header.as_bytes()) {
+            Ok(()) => println!("openssl update worked."),
+            Err(e) => println!("openssl update failed. Err: {e}"),
+        }
+        match verifier.verify(signature.as_bytes()) {
+            Ok(has_worked) => println!("openssl verify worked."),
+            Err(e) => println!("openssl verify failed. Err: {e}"),
         }
 
         let expected_pem = "-----BEGIN PUBLIC KEY-----
@@ -567,10 +576,6 @@ lQIDAQAB
 -----END PUBLIC KEY-----";
 
         //assert_eq!(expected_pem, pub_key_pem.trim_end());
-
-        let header = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ";
-        let payload = "eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IldEdF9MRUlsNFFORV8yNVppXy1qQ3ciLCJub25jZSI6Ijc1ODg2MjYtMjA3NDExNi02NzA2MTM0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NDk5MzUxMzEsImV4cCI6MTY0OTkzODczMX0";
-        let signature = "JoEW1ehJ8-hUV22oWNA_iVHjc75lmEY-9KJ71drz9udB_UcWKtLVKsbRNNGBec8sdBNkpbsWvmNTv4nSdnsA-Uwb35twBKqSyxJDSAElvnd3_7y0RMYIbFn-rmPdW58IApxzVhlfQbjBQNQMjF5YdIEP-BbxIfiBLg19PrGWwrVNhrG_Y_BbrjdS4-7903mGqO_RFaBCTvbPn7dZoJMZrlMDZPumyIdHeFGa4L2dbf6kKurfZp3sct899VFhjaVNgyHVGOUr7xRFrsQnfzj4jy4hOmXU8msKbxjEgX0s8eRmnae8YnTBwoycLLqrv1K9-bVx_LwisvcoCeXgNaQIcQ";
 
         let signature_bytes = base64::decode_config(signature, base64::URL_SAFE_NO_PAD).unwrap();
 
