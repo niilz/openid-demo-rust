@@ -20,15 +20,10 @@ impl Jwt {
     //      just tho then reparse all its pieces into base64 encoded elements again...
 
     // Validation of the authenticity of the ID-Token
-    pub fn varify_with_public_key(&self, public_key: PKey<Public>) -> bool {
-        println!("self.header: {}", self.header);
-        println!("self.payload: {}", self.payload);
-        println!("self.Signature {}", self.signature);
+    pub fn verify_with_public_key(&self, public_key: PKey<Public>) -> bool {
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
         //    signed using one of the certificates found at the URI specified in the jwks_uri
         //    metadata value of the Discovery document.
-        let signature_bytes = base64::decode_config(&self.signature, base64::URL_SAFE_NO_PAD)
-            .expect("Could not decode signature");
 
         // Get base64(header).base64(paload)
         let header_and_payload_base64 = self
@@ -37,15 +32,18 @@ impl Jwt {
 
         // Check that the signature matches the base64_enoced header.payload
         let mut verifier = Verifier::new(MessageDigest::sha256(), &public_key).unwrap();
-        let header_payload = format!("{{self.header}}.{{self.payload}}");
+        //let mut verifier = Verifier::new_without_digest(&public_key).unwrap();
+        let header_payload = format!("{}.{}", self.header, self.payload);
         match verifier.update(header_payload.as_bytes()) {
             Ok(()) => println!("openssl update worked."),
             Err(e) => eprintln!("openssl update failed. Err: {e}"),
         }
-        match verifier.verify(&self.signature.as_bytes()) {
+        let signature_bytes = base64::decode_config(&self.signature, base64::URL_SAFE).unwrap();
+        //match verifier.verify(&self.signature.as_bytes()) {
+        match verifier.verify(&signature_bytes) {
             Ok(has_worked) => {
-                println!("openssl verify worked.");
-                true
+                println!("openssl varification result: {has_worked}");
+                has_worked
             }
             Err(e) => {
                 eprintln!("openssl verify failed. Err: {e}");
@@ -166,11 +164,11 @@ impl Key {
         // (Copied from https://github.com/Keats/jsonwebtoken/blob/2f25cbed0a906e091a278c10eeb6cc1cf30dc24a/src/crypto/rsa.rs)
 
         // n_decoded = [181, 4, 153, 152, 231, 167, 23, 71, 223, 91, 176,...
-        let n_decoded = base64::decode_config(&self.n, base64::URL_SAFE_NO_PAD)
+        let n_decoded = base64::decode_config(&self.n, base64::URL_SAFE)
             .expect("Could not base64 decode n (modulus)");
 
         // e_decoded = [1, 0, 1] (we can think about it as: 010001)
-        let e_decoded = base64::decode_config(&self.e, base64::URL_SAFE_NO_PAD)
+        let e_decoded = base64::decode_config(&self.e, base64::URL_SAFE)
             .expect("Could not base64 decode e (exponent)");
 
         let n = BigNum::from_slice(&n_decoded).expect("Could not create BigNum from decoded_n");
@@ -485,9 +483,9 @@ JwIDAQAB
 
     #[test]
     fn can_construct_public_key_from_jwk_and_varify_token() {
-        let header = "eyeyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IkV6Uzd6bWVzVDAwN0o2TEFYQ2dNN1EiLCJub25jZSI6IjY3ODY0MDQtMjUwMDY0NS0xNzcxODU0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NTAyNjU0NjYsImV4cCI6MTY1MDI2OTA2Nn0.UP4smfJztaR5DoY01bFM6SrlX_26P7p8nEWjm3TuqXIb0mUGpQx8rR3UmzKYEddNPIdicKZJFAYm4Y9-fJ93xjn1Tb8tHl4suKIcbXLFeF9lNLzF5MW2AcydCRe6fqnl7ZKZb9zI9qSzcl1NDIUbJK23H8wQBmkYOkCU449T0U6s_KRacav_kMw6RTFYyEEOXi1D3HvsApAT2nGPUVtfcAdXKhLg_aDV8ybNWO8vLCBmbftAHYMcpTX7f-8kWI4-C9fGcrZ_-JO56aYJQk3rcnJzK2e2lY3uWIakcngzZN2wjJjgzZOwz1Ne4vGb_FCGF_L_R5B85Y537_dIgNdMZQJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ".to_string();
-        let payload = "eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IldEdF9MRUlsNFFORV8yNVppXy1qQ3ciLCJub25jZSI6Ijc1ODg2MjYtMjA3NDExNi02NzA2MTM0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NDk5MzUxMzEsImV4cCI6MTY0OTkzODczMX0".to_string();
-        let signature = "JoEW1ehJ8-hUV22oWNA_iVHjc75lmEY-9KJ71drz9udB_UcWKtLVKsbRNNGBec8sdBNkpbsWvmNTv4nSdnsA-Uwb35twBKqSyxJDSAElvnd3_7y0RMYIbFn-rmPdW58IApxzVhlfQbjBQNQMjF5YdIEP-BbxIfiBLg19PrGWwrVNhrG_Y_BbrjdS4-7903mGqO_RFaBCTvbPn7dZoJMZrlMDZPumyIdHeFGa4L2dbf6kKurfZp3sct899VFhjaVNgyHVGOUr7xRFrsQnfzj4jy4hOmXU8msKbxjEgX0s8eRmnae8YnTBwoycLLqrv1K9-bVx_LwisvcoCeXgNaQIcQ".to_string();
+        let header = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ".to_string();
+        let payload = "eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6Imk0MGtKTGhJSDhuZ0wwSFdoQ0JfVWciLCJub25jZSI6IjMzMjQ2NjUtMjA1ODA2My0zNjM1NjY4IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NTAyNzM0NzAsImV4cCI6MTY1MDI3NzA3MH0".to_string();
+        let signature = "If_sXURNGZNZk4XvKKtH1WnT963mETOZ2Q4CE-Uc0Rrtqaz8VnKhlHS2_P9iP85t80ZjnKAd_TgfroQX2LFZQQNOh4OzLkj-1a4d-EO2J24TqSXRqSNKX13o5cd0pCvUXU6I6dK0FKtrwNnhR9n_Op89rIfLd3SxiUnfpq3uEPrBgP89fUvuOyuWj-Tplh7lFjKlUvMANOJfl78t-sDmKJHL8szgfZPSd__1O5tKAKsjGD-JhwxniIutT8Oj0xThqJuols9rdf2TZifoniJawwp7hci3-c1R6rIOMNZsCzxQxBtdupEcOmGHw_lq3ZArh-w888gR-c5rDGGANHUiQg".to_string();
 
         let jwt = Jwt {
             header,
@@ -513,7 +511,7 @@ JwIDAQAB
         let key = jwks.keys.iter().next().unwrap();
         let rsa_pub_key = key.to_rsa_public_key();
 
-        let is_varified = jwt.varify_with_public_key(rsa_pub_key);
+        let is_varified = jwt.verify_with_public_key(rsa_pub_key);
 
         assert!(is_varified);
     }
