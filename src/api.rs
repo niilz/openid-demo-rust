@@ -1,9 +1,10 @@
 use crate::{
     credentials::Credentials,
-    jwt, meta,
+    jwt::{self, Payload},
+    meta,
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
-    service::user::{Conserved, InMemoryUserRepository, User},
+    service::user::{Conserved, InMemoryUserRepository, Persistence, User},
 };
 use rocket::{response::Redirect, serde::json::Value, State};
 use serde_json::json;
@@ -108,14 +109,20 @@ pub async fn handle_success(
     // TODO: Figure out how to find out which of the two keys matches
     //      The 'kid' parameter should be used for that (see: https://auth0.com/blog/navigating-rs256-and-jwks/)
 
-    let payload = jwt.payload;
+    let payload_bytes = base64::decode_config(&jwt.payload, base64::URL_SAFE_NO_PAD)
+        .expect("Could not deconstruct payload");
+    let payload = String::from_utf8(payload_bytes).expect("Could not parse payload ad UTF-8");
 
     // Step: 4
     // If User is new register the user by saving it into the repository
     // Otherwise get the user from the repository
     let mut repo = user_repo.lock().unwrap();
-    let payload = serde_json::json!(payload);
-    let user = session_user(&mut repo, payload["name"].to_string());
+    println!("payload: {:?}", payload);
+    let payload_json: Payload =
+        serde_json::from_str(&payload).expect("Could not parse payload as json");
+    println!("payload: {:?}", payload_json);
+    println!("user-name: {}", payload_json.name);
+    let user = session_user(&mut repo, payload_json.name);
     drop(repo);
 
     // TODO:
@@ -144,7 +151,6 @@ async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String
 
 fn session_user(user_repo: &mut InMemoryUserRepository, user_name: String) -> User<Conserved> {
     // If new, save User to Repo
-    //let mut repo = user_repo.lock().unwrap();
     if let Some(user) = user_repo.get_user_by_name(&user_name) {
         user
     } else {
