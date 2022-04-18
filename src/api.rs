@@ -101,11 +101,10 @@ pub async fn handle_success(
     // c. get public_key and decode its base64-representation
     let is_valid = jwks
         .iter()
-        .map(|key| {
+        .filter(|key| {
             let rsa_public_key = key.to_rsa_public_key();
             jwt.verify_with_public_key(rsa_public_key)
         })
-        .filter(|is_valid| *is_valid)
         .count()
         > 0;
 
