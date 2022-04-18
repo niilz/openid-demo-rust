@@ -104,7 +104,7 @@ pub async fn handle_success(
         let rsa_public_key = key.to_rsa_public_key();
         //println!("kid_jwt: {:?}", rsa_public_key);
         println!();
-        let is_valid = jwt.validate_from_rsa_parts(rsa_public_key);
+        let is_valid = jwt.varify_with_public_key(rsa_public_key);
         println!("is_valid: {}", is_valid);
     }
     // TODO: Figure out how to find out which of the two keys matches
