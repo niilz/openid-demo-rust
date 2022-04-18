@@ -99,14 +99,18 @@ pub async fn handle_success(
     // b. get key from jwks-endpoint
     let jwks = ip_meta_info.get_jwks().await?;
     // c. get public_key and decode its base64-representation
-    for key in jwks {
-        println!("JWKS: {key:?}");
-        let rsa_public_key = key.to_rsa_public_key();
-        //println!("kid_jwt: {:?}", rsa_public_key);
-        println!();
-        let is_valid = jwt.verify_with_public_key(rsa_public_key);
-        println!("is_valid: {}", is_valid);
-    }
+    let is_valid = jwks
+        .iter()
+        .map(|key| {
+            let rsa_public_key = key.to_rsa_public_key();
+            jwt.verify_with_public_key(rsa_public_key)
+        })
+        .filter(|is_valid| *is_valid)
+        .count()
+        > 0;
+
+    println!("Token validity: {is_valid}");
+
     // TODO: Figure out how to find out which of the two keys matches
     //      The 'kid' parameter should be used for that (see: https://auth0.com/blog/navigating-rs256-and-jwks/)
 
@@ -125,7 +129,7 @@ pub async fn handle_success(
     // TODO:
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
-    Ok(json!("TODO"))
+    Ok(json!({ "validity": is_valid }))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
