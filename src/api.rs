@@ -98,11 +98,11 @@ pub async fn handle_success(
 
     // b. get key from jwks-endpoint
     let jwks = ip_meta_info.get_jwks().await?;
-
     // c. get public_key and decode its base64-representation
     for key in jwks {
+        println!("JWKS: {key:?}");
         let rsa_public_key = key.to_rsa_public_key();
-        println!("kid_jwt: {:?}", rsa_public_key);
+        //println!("kid_jwt: {:?}", rsa_public_key);
         println!();
         let is_valid = jwt.validate_from_rsa_parts(rsa_public_key);
         println!("is_valid: {}", is_valid);

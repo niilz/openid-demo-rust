@@ -1,5 +1,6 @@
 #![allow(unused_variables)]
 use ring::signature::{self, RsaPublicKeyComponents};
+use rsa::pkcs8::ToPublicKey;
 use serde::{Deserialize, Serialize};
 use simple_asn1::BigUint;
 use time::OffsetDateTime;
@@ -20,6 +21,8 @@ impl Jwt {
 
     // Validation of the authenticity of the ID-Token
     pub fn validate_from_rsa_parts(&self, public_key: RsaPublicKeyComponents<Vec<u8>>) -> bool {
+        println!("self.header: {}", self.header);
+        println!("self.payload: {}", self.payload);
         println!("self.Signature {}", self.signature);
         // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
         //    signed using one of the certificates found at the URI specified in the jwks_uri
@@ -32,18 +35,29 @@ impl Jwt {
             .header_and_payload_base64()
             .expect("Could not transform header and payload to base64");
 
-        println!("header.payload: {}", header_and_payload_base64);
+        let n_big = rsa::BigUint::from_bytes_be(&public_key.n);
+        let e_big = rsa::BigUint::from_bytes_be(&public_key.e);
+        let public_key_rsa = rsa::RsaPublicKey::new(n_big, e_big).unwrap();
+        let pub_key_pem = public_key_rsa.to_public_key_pem().unwrap();
+        println!("PUB-KEY: {}", pub_key_pem);
+        let pub_key =
+            signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA256, pub_key_pem);
+        match pub_key.verify(header_and_payload_base64.as_bytes(), &signature_bytes) {
+            Ok(()) => println!("yippiiii"),
+            Err(e) => println!("nope! Err: {e}"),
+        }
 
         // Check that the signature matches the base64_enoced header.payload
         // ERROR: The VERIFY-Function does not work (it always fails)
+
         match public_key.verify(
-            &signature::RSA_PKCS1_2048_8192_SHA512,
+            &signature::RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
             &header_and_payload_base64.as_bytes(),
             &signature_bytes,
         ) {
             Ok(()) => true,
             Err(e) => {
-                eprintln!("The signature does not match the token");
+                eprintln!("The signature does not match the token. Err: {e}");
                 false
             }
         }
@@ -63,6 +77,7 @@ impl Jwt {
 }
 
 pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
+    println!("the ID_TOKEN: {}", id_token.as_ref());
     let parts: Vec<&str> = id_token.as_ref().split('.').collect();
     if let [header, payload, signature] = &parts[..] {
         return Ok(Jwt {
@@ -173,6 +188,7 @@ mod tests {
     use crate::jwt::Jwks;
     use crate::jwt::Key;
     use crate::jwt::{destruct, Jwt, Payload};
+    use crate::meta::IpMetaInformation;
     use ring::signature;
     use rsa::pkcs8::ToPublicKey;
     use std::ops::Add;
@@ -364,7 +380,7 @@ mod tests {
                 )
                 .expect("Could not sign the JWT");
 
-            let signature_base_64 = base64::encode(signature);
+            let signature_base_64 = base64::encode_config(signature, base64::URL_SAFE_NO_PAD);
             self.signature = signature_base_64;
 
             Ok(())
@@ -378,8 +394,8 @@ mod tests {
             // 1. Verify that the ID token is properly signed by the issuer. Google-issued tokens are
             //    signed using one of the certificates found at the URI specified in the jwks_uri
             //    metadata value of the Discovery document.
-            let signature_bytes =
-                base64::decode(&self.signature).expect("Could not decode signature");
+            let signature_bytes = base64::decode_config(&self.signature, base64::URL_SAFE_NO_PAD)
+                .expect("Could not decode signature");
 
             // Get base64(header).base64(paload)
             let header_and_payload_base64 = self
@@ -495,5 +511,78 @@ JwIDAQAB
 ";
 
         assert_eq!(expected_pub_key, public_key);
+    }
+
+    #[test]
+    fn can_construct_public_key_from_jwk_with_rsa_public_key_components() {
+        let jwk_json = r#"{
+            "keys": [
+              {
+                "e": "AQAB",
+                "kid": "d332ab545cc189df133efddb3a6c402ebf489ac2",
+                "alg": "RS256",
+                "n": "pnvsf_d6daVCXm6NoBHxpIhkk345edh7GaiXl25XR4_q2ATkiZMBF8foXaa_LTyr8W5dmvqIE71p_T9ygVLMoP7YumjOimrbwB3gEV1ekI-d2rkRbCFg56bzifkAi8gdQW3pj4j-bouOSNkEAUeVSDsHst1f-sFmckZmb1Pe1bWLI-k6TXirXQpGDEZKeh1AWxillo9AWqmDXalurQt46W6rd1y2RCj5Y5zXQheNF6Il0Izc4K5RDBKkanyZ7Dq_ZFuTpVJkxPgCjN6G8cfzM0JKujWX4Zit2xCmZhVfr7hDodnNEPo1IppWNrjcfZOtA_Jh6yBlB7T8DWd1l1PvUQ",
+                "use": "sig",
+                "kty": "RSA"
+              }
+            ]
+        }"#;
+
+        let actual_google_pem_a = "-----BEGIN CERTIFICATE-----\nMIIDJjCCAg6gAwIBAgIIGmjjgfnH1wkwDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE\nAwwrZmVkZXJhdGVkLXNpZ25vbi5zeXN0ZW0uZ3NlcnZpY2VhY2NvdW50LmNvbTAe\nFw0yMjA0MDUxNTIxNDdaFw0yMjA0MjIwMzM2NDdaMDYxNDAyBgNVBAMMK2ZlZGVy\nYXRlZC1zaWdub24uc3lzdGVtLmdzZXJ2aWNlYWNjb3VudC5jb20wggEiMA0GCSqG\nSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC8KTW+pPepMtaxnTLI7pPmwcEVQw8j1tyN\nP3I73hxlR8mO21FX9EzFSC8H5zej53Ht/haszeSdihafmmYYfr8He8lu+dPN+eOi\nNoF+yqfwJ2h/WYjc3pkqaEVVbP5K6LrnJxv0XYxXD7PQNxnGT8NwEQwbonGmz0jb\n+EWbvGQI+OI3ZDxP4ws2EliejEF7VW27IIUUQMC1TlVcjIkR0OjP8xchHujxOxBO\ndfVmkHhKKO1KHPigldpAZ5Jvx5v0CDCI66IUoed2Ixp6a0R+ciRTgRdn8xdct2LR\nGr564DtdUWT6PWNXFG1U6GvPRUgzLYHyDqXzXvMoeoLdki/U9tRVAgMBAAGjODA2\nMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBYGA1UdJQEB/wQMMAoGCCsG\nAQUFBwMCMA0GCSqGSIb3DQEBBQUAA4IBAQB8CuCKHRfysTxXke6rNk7PKxKiX4hh\nErJ3CqQGlTZ9bry6fZPDWI4pBFVd4Bwhn9/xCttdEmu1xGezKOKVhxyG6VUftZoG\nSILFQuOJ2bljnP8kcyyM+vtA5tPV2TwxVebtttyymvD7hb5NVP5dogDRyvjefL+u\nGKtoIrK2P6rk3pqbiHOngxOebcp+5NQluD1SG0J8QArRjY5CwhpdGlzR6bGsIefb\nqpLfonPw2mrX7BNVwm1qKvyN4p/egQLOm2WyIIPiQnZmwE7nuncncQa1XBUWeFxk\n78bU7IdmVS9YD/Rwyl2JBeM7DHXDTDOSRyv+MWAAFZ7yVeCRsDFJrE/x\n-----END CERTIFICATE-----\n";
+        let actual_google_pem_b = "-----BEGIN CERTIFICATE-----\nMIIDJjCCAg6gAwIBAgIIbnk0TccKKi4wDQYJKoZIhvcNAQEFBQAwNjE0MDIGA1UE\nAwwrZmVkZXJhdGVkLXNpZ25vbi5zeXN0ZW0uZ3NlcnZpY2VhY2NvdW50LmNvbTAe\nFw0yMjA0MTMxNTIxNDlaFw0yMjA0MzAwMzM2NDlaMDYxNDAyBgNVBAMMK2ZlZGVy\nYXRlZC1zaWdub24uc3lzdGVtLmdzZXJ2aWNlYWNjb3VudC5jb20wggEiMA0GCSqG\nSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCme+x/93p1pUJebo2gEfGkiGSTfjl52HsZ\nqJeXbldHj+rYBOSJkwEXx+hdpr8tPKvxbl2a+ogTvWn9P3KBUsyg/ti6aM6KatvA\nHeARXV6Qj53auRFsIWDnpvOJ+QCLyB1BbemPiP5ui45I2QQBR5VIOwey3V/6wWZy\nRmZvU97VtYsj6TpNeKtdCkYMRkp6HUBbGKWWj0BaqYNdqW6tC3jpbqt3XLZEKPlj\nnNdCF40XoiXQjNzgrlEMEqRqfJnsOr9kW5OlUmTE+AKM3obxx/MzQkq6NZfhmK3b\nEKZmFV+vuEOh2c0Q+jUimlY2uNx9k60D8mHrIGUHtPwNZ3WXU+9RAgMBAAGjODA2\nMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBYGA1UdJQEB/wQMMAoGCCsG\nAQUFBwMCMA0GCSqGSIb3DQEBBQUAA4IBAQBxeBEVTkb5Hbys3MOMc7drCGFoAbHy\n2ahQ7+nIyRvCnCvEG0odoKA5zo2GPIzmk5wfQ/xDC2MwX68rMYRFxRNQYxoyaGB0\naGwtQRPdubAKs5HdxlLPF2jVKoEEtupWoruuf3razHNIxlg6MdF3OuEzTHxeJpjX\njA/ccn9kXEBXl9SBVY44cjqx+tXlqc+ddkByBx8dPw2x34nd55mqOPhJuIWBrtIP\nu/I2nbYx3tT54H7dEvvC6nc2Z9Iogh0u+d77AkLSw2ZHa5bjBShtmKj+l8VDEERH\nLWnTPz7mR7KLvwTCpK9OMVjX9ef5HXipkObLpSeiaqhrOs2gZWLoB9ha\n-----END CERTIFICATE-----\n";
+        let jwks: Jwks = serde_json::from_str(jwk_json).unwrap();
+        println!("n: {:?}", jwks);
+
+        let key = jwks.keys.iter().next().unwrap();
+        let rsa_pub_key = key.to_rsa_public_key();
+
+        let n_big = rsa::BigUint::from_bytes_be(&rsa_pub_key.n);
+        let e_big = rsa::BigUint::from_bytes_be(&rsa_pub_key.e);
+        let public_key_rsa = rsa::RsaPublicKey::new(n_big, e_big).unwrap();
+        let pub_key_pem = public_key_rsa.to_public_key_pem().unwrap();
+        println!("rsa_pub_key: {}", pub_key_pem);
+
+        let expected_pem = "-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1YWUM8Y5UExSfXsBrF6o
+ACI48nITxDf07CiYKn/VTbLRlpXX1AfNtQhrjm+jPjC16qXnGCBhdlZHdCycfezo
+Mg8svo41U7YIVLP5G5H6f7VxAEglmV5IGc0kj35//qmqy3t1Eug/iqxCOyRlcDEL
+Q75MNOhYFQtjeEtLuw4ErpPpOeYVX71vOH3Q9epItMM0n18FXW5Dd6BkCiHvMkb5
+eSHOH07J0h+MkRF133R+YSPPgDlqLeRxdjDo2rwqKFsOa68edzconVcETWR2YSoF
+tangVd+IBhzFrax8gyVsntKpmbg8XyJZU2vtgMiTdP0wAjAe8gy78Dg1WIOVOe58
+lQIDAQAB
+-----END PUBLIC KEY-----";
+
+        //assert_eq!(expected_pem, pub_key_pem.trim_end());
+
+        let header = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ";
+        let payload = "eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IldEdF9MRUlsNFFORV8yNVppXy1qQ3ciLCJub25jZSI6Ijc1ODg2MjYtMjA3NDExNi02NzA2MTM0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NDk5MzUxMzEsImV4cCI6MTY0OTkzODczMX0";
+        let signature = "JoEW1ehJ8-hUV22oWNA_iVHjc75lmEY-9KJ71drz9udB_UcWKtLVKsbRNNGBec8sdBNkpbsWvmNTv4nSdnsA-Uwb35twBKqSyxJDSAElvnd3_7y0RMYIbFn-rmPdW58IApxzVhlfQbjBQNQMjF5YdIEP-BbxIfiBLg19PrGWwrVNhrG_Y_BbrjdS4-7903mGqO_RFaBCTvbPn7dZoJMZrlMDZPumyIdHeFGa4L2dbf6kKurfZp3sct899VFhjaVNgyHVGOUr7xRFrsQnfzj4jy4hOmXU8msKbxjEgX0s8eRmnae8YnTBwoycLLqrv1K9-bVx_LwisvcoCeXgNaQIcQ";
+
+        let signature_bytes = base64::decode_config(signature, base64::URL_SAFE_NO_PAD).unwrap();
+
+        let header_payload = format!("{header}.{payload}");
+        println!("{header_payload}.{signature}");
+
+        let pub_key_a = signature::UnparsedPublicKey::new(
+            &signature::RSA_PKCS1_2048_8192_SHA256,
+            //pub_key_pem,
+            actual_google_pem_a,
+        );
+
+        let pub_key_b = signature::UnparsedPublicKey::new(
+            &signature::RSA_PKCS1_2048_8192_SHA256,
+            //pub_key_pem,
+            actual_google_pem_b,
+        );
+
+        match pub_key_a.verify(header_payload.as_bytes(), &signature_bytes) {
+            Ok(()) => println!("It worked"),
+            Err(e) => println!("nooope: {e}"),
+        }
+
+        match pub_key_b.verify(header_payload.as_bytes(), &signature_bytes) {
+            Ok(()) => println!("It worked"),
+            Err(e) => println!("nooope: {e}"),
+        }
     }
 }
