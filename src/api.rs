@@ -4,7 +4,7 @@ use crate::{
     meta,
     request::{AuthCodeRequest, TokenRequest},
     response::TokenResponse,
-    service::user::{Conserved, InMemoryUserRepository, Persistence, User},
+    service::user::{Conserved, InMemoryUserRepository, User},
 };
 use rocket::{response::Redirect, serde::json::Value, State};
 use serde_json::json;
@@ -101,37 +101,41 @@ pub async fn handle_success(
     let jwks = ip_meta_info.get_jwks().await?;
 
     // c. get public_key and decode its base64-representation
-    let is_valid = jwks.iter().any(|key| {
+    let is_verified = jwks.iter().any(|key| {
         let rsa_public_key = key.to_rsa_public_key();
         // d. verify id-token-jwt with public key
         jwt.verify_with_public_key(rsa_public_key)
     });
+    if !is_verified {
+        return Err("ID-Token was could not be verified");
+    }
     // TODO: Figure out how to find out which of the two keys matches
     //      The 'kid' parameter should be used for that (see: https://auth0.com/blog/navigating-rs256-and-jwks/)
 
+    // Step: 4
+    // Convert base64-Payload into Payload-struct
     let payload_bytes = base64::decode_config(&jwt.payload, base64::URL_SAFE_NO_PAD)
         .expect("Could not deconstruct payload");
-    let payload = String::from_utf8(payload_bytes).expect("Could not parse payload ad UTF-8");
+    let payload_str = String::from_utf8(payload_bytes).expect("Could not parse payload ad UTF-8");
 
-    // Step: 4
+    let payload: Payload =
+        serde_json::from_str(&payload_str).expect("Could not parse payload as json");
+    let is_valid = payload.validate(&credentials.client_id);
+    if !is_valid {
+        return Err("Payload is not valid");
+    }
+    // Step: 5
     // If User is new register the user by saving it into the repository
     // Otherwise get the user from the repository
     let mut repo = user_repo.lock().unwrap();
-    println!("payload: {:?}", payload);
-    let payload_json: Payload =
-        serde_json::from_str(&payload).expect("Could not parse payload as json");
-    println!("payload: {:?}", payload_json);
-    println!("user-name: {}", payload_json.name);
-    let user = session_user(&mut repo, payload_json.name);
+    let user = session_user(&mut repo, payload.name);
     drop(repo);
 
     // TODO:
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
-    if is_valid {
-        return Ok(json!({"Logged-in-User": user.name}));
-    }
-    Err("ID-Token was not valid")
+
+    Ok(json!({"Logged-in-User": user.name}))
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {

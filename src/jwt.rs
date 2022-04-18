@@ -22,11 +22,6 @@ impl Jwt {
         //    signed using one of the certificates found at the URI specified in the jwks_uri
         //    metadata value of the Discovery document.
 
-        // Get base64(header).base64(paload)
-        let header_and_payload_base64 = self
-            .header_and_payload_base64()
-            .expect("Could not transform header and payload to base64");
-
         // Check that the signature matches the base64_enoced header.payload
         let mut verifier = Verifier::new(MessageDigest::sha256(), &public_key).unwrap();
         //let mut verifier = Verifier::new_without_digest(&public_key).unwrap();
@@ -48,22 +43,10 @@ impl Jwt {
             }
         }
     }
-
-    fn header_and_payload_base64(&self) -> serde_json::Result<String> {
-        let head_base64 = base64::encode_config(
-            serde_json::to_string(&self.header)?,
-            base64::URL_SAFE_NO_PAD,
-        );
-        let payload_base64 = base64::encode_config(
-            serde_json::to_string(&self.payload)?,
-            base64::URL_SAFE_NO_PAD,
-        );
-        Ok(format!("{}.{}", head_base64, payload_base64))
-    }
 }
 
 pub fn destruct(id_token: impl AsRef<str>) -> Result<Jwt, &'static str> {
-    println!("the ID_TOKEN: {}", id_token.as_ref());
+    // println!("the ID_TOKEN: {}", id_token.as_ref());
     let parts: Vec<&str> = id_token.as_ref().split('.').collect();
     if let [header, payload, signature] = &parts[..] {
         return Ok(Jwt {
@@ -110,9 +93,8 @@ pub struct Payload {
     pub exp: i64,
 }
 
-#[allow(dead_code)]
 impl Payload {
-    fn validate(&self, client_id: &str) -> bool {
+    pub fn validate(&self, client_id: &str) -> bool {
         // 2. Verify the value of the iss claim in the ID token
         if !ALLOWED_ISSUERS.contains(&self.iss.as_ref()) {
             return false;
@@ -358,7 +340,7 @@ mod tests {
     impl Jwt {
         fn sign_jwt(&mut self, private_key: Vec<u8>) -> serde_json::Result<()> {
             let alg = serde_json::json!(&self.header)["alg"].to_string();
-            let jwt_base64 = self.header_and_payload_base64()?;
+            let header_payload_base64 = format!("{}.{}", self.header, self.payload);
 
             // Construct ring-KeyPair
             let rsa_key_pair =
@@ -370,7 +352,7 @@ mod tests {
                 .sign(
                     &signature::RSA_PKCS1_SHA256,
                     &rand,
-                    jwt_base64.as_bytes(),
+                    header_payload_base64.as_bytes(),
                     &mut signature,
                 )
                 .expect("Could not sign the JWT");
@@ -393,9 +375,7 @@ mod tests {
                 .expect("Could not decode signature");
 
             // Get base64(header).base64(paload)
-            let header_and_payload_base64 = self
-                .header_and_payload_base64()
-                .expect("Could not transform header and payload to base64");
+            let header_and_payload_base64 = format!("{}.{}", self.header, self.payload);
 
             // Create Public-Key struct from key-bytes
             let public_key = signature::UnparsedPublicKey::new(
