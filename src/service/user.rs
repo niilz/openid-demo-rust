@@ -48,7 +48,7 @@ impl Persistence for Conserved {}
 #[derive(PartialEq, Eq, Debug, Hash, Clone)]
 pub struct User<P: Persistence> {
     id: Option<u32>,
-    name: String,
+    pub name: String,
     _state: PhantomData<P>,
 }
 

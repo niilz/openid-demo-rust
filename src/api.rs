@@ -98,22 +98,15 @@ pub async fn handle_success(
 
     // b. get key from jwks-endpoint
     let jwks = ip_meta_info.get_jwks().await?;
+
     // c. get public_key and decode its base64-representation
-    let is_valid = jwks
-        .iter()
-        .filter(|key| {
-            let rsa_public_key = key.to_rsa_public_key();
-            jwt.verify_with_public_key(rsa_public_key)
-        })
-        .count()
-        > 0;
-
-    println!("Token validity: {is_valid}");
-
+    let is_valid = jwks.iter().any(|key| {
+        let rsa_public_key = key.to_rsa_public_key();
+        // d. verify id-token-jwt with public key
+        jwt.verify_with_public_key(rsa_public_key)
+    });
     // TODO: Figure out how to find out which of the two keys matches
     //      The 'kid' parameter should be used for that (see: https://auth0.com/blog/navigating-rs256-and-jwks/)
-
-    // d. validate id-token-jwt with public key
 
     let payload = jwt.payload;
 
@@ -122,13 +115,16 @@ pub async fn handle_success(
     // Otherwise get the user from the repository
     let mut repo = user_repo.lock().unwrap();
     let payload = serde_json::json!(payload);
-    let _user = session_user(&mut repo, payload["name"].to_string());
+    let user = session_user(&mut repo, payload["name"].to_string());
     drop(repo);
 
     // TODO:
     // Create a session
     //let session: Option<Session> = session_service.start_session(user_data);
-    Ok(json!({ "validity": is_valid }))
+    if is_valid {
+        return Ok(json!({"Logged-in-User": user.name}));
+    }
+    Err("ID-Token was not valid")
 }
 
 async fn get_tokens(code: &str, client_id: &str, client_secret: &str) -> (String, String) {
