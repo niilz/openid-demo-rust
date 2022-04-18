@@ -33,7 +33,7 @@ impl<'a> AuthCodeRequest<'a> {
     }
 }
 
-pub fn generate_nonce<'a>() -> String {
+pub fn generate_nonce() -> String {
     // negligently creating a nonce
     let mut rng = thread_rng();
     (0..3)
@@ -42,7 +42,7 @@ pub fn generate_nonce<'a>() -> String {
         .join("-")
 }
 
-pub fn generate_sec_token<'a>(special_number: u8) -> String {
+pub fn generate_sec_token(special_number: u8) -> String {
     // Totally unsecure, hard coded string
     format!(
         "security-token-1234567890SauerkrautSafthttpsKeepItSafe-{}",

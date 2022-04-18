@@ -28,14 +28,10 @@ impl InMemoryUserRepository {
         }
     }
     pub fn get_user_by_name(&self, name: impl AsRef<str>) -> Option<User<Conserved>> {
-        match self
-            .users
+        self.users
             .iter()
             .find(|(_id, user)| user.get_name() == name.as_ref())
-        {
-            Some((_id, user)) => Some((*user).clone()),
-            None => None,
-        }
+            .map(|(_id, user)| (*user).clone())
     }
 }
 
