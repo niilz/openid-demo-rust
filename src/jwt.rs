@@ -542,6 +542,20 @@ JwIDAQAB
         let pub_key_pem = public_key_rsa.to_public_key_pem().unwrap();
         println!("rsa_pub_key: {}", pub_key_pem);
 
+        use google_jwt_verify::Client;
+        let client_id = "291682216658-ufvd2b72f0o0ss7g3dgmjmm1jpmaqifs.apps.googleusercontent.com";
+        let token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImQzMzJhYjU0NWNjMTg5ZGYxMzNlZmRkYjNhNmM0MDJlYmY0ODlhYzIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyOTE2ODIyMTY2NTgtdWZ2ZDJiNzJmMG8wc3M3ZzNkZ21qbW0xanBtYXFpZnMuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTMwMjQzMDIzNDM5NDgzNzE1ODUiLCJlbWFpbCI6ImRhcmVkZXZkaWFyeUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXRfaGFzaCI6IkV6Uzd6bWVzVDAwN0o2TEFYQ2dNN1EiLCJub25jZSI6IjY3ODY0MDQtMjUwMDY0NS0xNzcxODU0IiwibmFtZSI6Ik5pbHMgSGFiZXJzdHJvaCIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQVRYQUp6NXAzX0lZY2xYajVoNm9pVkt4WWJRMHcyM3kxS3RYa3cyLXNZTT1zOTYtYyIsImdpdmVuX25hbWUiOiJOaWxzIiwiZmFtaWx5X25hbWUiOiJIYWJlcnN0cm9oIiwibG9jYWxlIjoiZGUiLCJpYXQiOjE2NTAyNjU0NjYsImV4cCI6MTY1MDI2OTA2Nn0.UP4smfJztaR5DoY01bFM6SrlX_26P7p8nEWjm3TuqXIb0mUGpQx8rR3UmzKYEddNPIdicKZJFAYm4Y9-fJ93xjn1Tb8tHl4suKIcbXLFeF9lNLzF5MW2AcydCRe6fqnl7ZKZb9zI9qSzcl1NDIUbJK23H8wQBmkYOkCU449T0U6s_KRacav_kMw6RTFYyEEOXi1D3HvsApAT2nGPUVtfcAdXKhLg_aDV8ybNWO8vLCBmbftAHYMcpTX7f-8kWI4-C9fGcrZ_-JO56aYJQk3rcnJzK2e2lY3uWIakcngzZN2wjJjgzZOwz1Ne4vGb_FCGF_L_R5B85Y537_dIgNdMZQ";
+
+        let client = Client::new(&client_id);
+        let token = client.verify_id_token(&token);
+        match token {
+            Ok(id_payload) => println!(
+                "This lib works! Email: {}",
+                id_payload.get_payload().get_name()
+            ),
+            Err(e) => println!("outschiii from lib: {e:?}"),
+        }
+
         let expected_pem = "-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1YWUM8Y5UExSfXsBrF6o
 ACI48nITxDf07CiYKn/VTbLRlpXX1AfNtQhrjm+jPjC16qXnGCBhdlZHdCycfezo
